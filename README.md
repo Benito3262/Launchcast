@@ -48,7 +48,7 @@ Launchcast and TestUSD were successfully deployed to Robinhood Chain Testnet (ch
 - [Launchcast contract explorer](https://explorer.testnet.chain.robinhood.com/address/0x091413de1302640f78d41e2370507c1a8f774c45)
 - [TestUSD contract explorer](https://explorer.testnet.chain.robinhood.com/address/0x9557aade5c89fe39941b4f3a60cbac16e3f32143)
 
-The app includes wallet connection, live contract market reads, YES/NO staking, portfolio and claims, TestUSD faucet access, owner-only market creation, permissionless settlement, and owner fee controls. All transactions remain testnet-only. The public website still needs a hosting connection and end-to-end wallet testing.
+The app includes wallet connection, live contract market reads, YES/NO staking, portfolio and claims, TestUSD faucet access, owner-only market creation, permissionless settlement, and owner fee controls. All transactions remain testnet-only. The public website still needs a hosting connection and end-to-end wallet testing. A Vercel config is included at `web/vercel.json`. To publish it, import `Benito3262/Launchcast` in Vercel, set the project root directory to `web`, keep the build command as `npm run build` and output directory as `dist`, then deploy. The frontend reads its testnet contract addresses from the committed deployment JSON; no private key or wallet secret is needed for the frontend hosting build.
 
 The manually gated workflow is retained for future testnet redeployments at **Actions → Deploy Launchcast to Robinhood Testnet**. It requires repository secrets `LAUNCHCAST_TESTNET_PRIVATE_KEY` (dedicated testnet-only wallet key) and `LAUNCHCAST_FEE_RECIPIENT`. Never put a private key in a commit, issue, chat message, or workflow input.
 
