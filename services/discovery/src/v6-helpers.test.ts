@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import type { Address } from "viem";
-import { classifyV6DiscoveryStatus, hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange } from "./v6-helpers.js";
+import { classifyV6DiscoveryStatus, curvePriceScaled1e18, fdvPairScaled1e18, hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange, pairPriceScaled1e18, sqrtPriceFromPoolStateWord, v4PriceScaled1e18 } from "./v6-helpers.js";
 
 const token = "0x1111111111111111111111111111111111111111" as Address;
 const curve = "0x2222222222222222222222222222222222222222" as Address;
@@ -33,4 +33,30 @@ test("does not confuse empty samples with a factory reporting zero launches", ()
   assert.equal(classifyV6DiscoveryStatus(20n, 0, 3), "no_records_validated_with_read_errors");
   assert.equal(classifyV6DiscoveryStatus(20n, 0, 0), "no_records_validated_in_sampled_window");
   assert.equal(classifyV6DiscoveryStatus(20n, 2, 1), "sampled_records_validated");
+});
+
+test("normalizes pair price using token and quote-asset decimals", () => {
+  assert.equal(pairPriceScaled1e18(1n, 1n, 18, 18), 10n ** 18n);
+  assert.equal(pairPriceScaled1e18(1n, 2n, 18, 18), 5n * 10n ** 17n);
+  assert.equal(pairPriceScaled1e18(1n, 1n, 18, 6), 10n ** 30n);
+});
+
+test("calculates curve and V4 prices with the correct currency orientation", () => {
+  assert.equal(curvePriceScaled1e18(1n, 2n, 18, 18), 5n * 10n ** 17n);
+  const q96 = 1n << 96n;
+  assert.equal(v4PriceScaled1e18(q96, true, 18, 18), 10n ** 18n);
+  assert.equal(v4PriceScaled1e18(q96 * 2n, true, 18, 18), 4n * 10n ** 18n);
+  assert.equal(v4PriceScaled1e18(q96 * 2n, false, 18, 18), 25n * 10n ** 16n);
+});
+
+test("calculates fully diluted valuation in quote-asset units", () => {
+  assert.equal(fdvPairScaled1e18(10n ** 17n, 10n ** 27n, 18), 10n ** 26n);
+});
+
+test("extracts the low 160-bit sqrt price from a V4 state word", () => {
+  const sqrt = 123456789n;
+  const highBits = 0xfeedn << 160n;
+  const word = "0x" + (highBits | sqrt).toString(16).padStart(64, "0");
+  assert.equal(sqrtPriceFromPoolStateWord(word), sqrt);
+  assert.throws(() => sqrtPriceFromPoolStateWord("0x1234"), TypeError);
 });
