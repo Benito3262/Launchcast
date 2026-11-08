@@ -52,6 +52,7 @@ contract Launchcast {
     mapping(uint256 marketId => mapping(address user => uint256 amount)) public yesStake;
     mapping(uint256 marketId => mapping(address user => uint256 amount)) public noStake;
     mapping(uint256 marketId => mapping(address user => bool claimed)) public hasClaimed;
+    mapping(uint256 marketId => uint256 feeAmount) public marketFee;
 
     uint256 private lockState = 1;
 
@@ -225,6 +226,7 @@ contract Launchcast {
         uint256 fee;
         if (winningPool != 0 && losingPool != 0) {
             fee = (losingPool * feeBps) / 10_000;
+            marketFee[marketId] = fee;
             accruedFees += fee;
         }
 
@@ -232,11 +234,7 @@ contract Launchcast {
     }
 
     function _feeFor(uint256 marketId) internal view returns (uint256) {
-        Market storage market = markets[marketId];
-        uint256 winningPool = market.outcomeYes ? market.yesPool : market.noPool;
-        uint256 losingPool = market.outcomeYes ? market.noPool : market.yesPool;
-        if (winningPool == 0 || losingPool == 0) return 0;
-        return (losingPool * feeBps) / 10_000;
+        return marketFee[marketId];
     }
 
     function _readGraduated(address curve) internal view returns (bool graduated_) {
