@@ -14,6 +14,7 @@ interface IERC20Launchcast {
 contract Launchcast {
     error Unauthorized();
     error InvalidAddress();
+    error InvalidToken();
     error InvalidFee();
     error InvalidMarket();
     error InvalidCurve();
@@ -80,6 +81,7 @@ contract Launchcast {
 
     constructor(address stakeToken_, address feeRecipient_, uint16 feeBps_) {
         if (stakeToken_ == address(0) || feeRecipient_ == address(0)) revert InvalidAddress();
+        if (stakeToken_.code.length == 0) revert InvalidToken();
         if (feeBps_ > MAX_FEE_BPS) revert InvalidFee();
 
         owner = msg.sender;
