@@ -54,6 +54,7 @@ contract LaunchcastTest {
         require(payout == 195 * 10 ** 6, "wrong winner payout");
         require(token.balanceOf(ALICE) == 1_095 * 10 ** 6, "wrong winner balance");
 
+        vm.prank(FEE_RECIPIENT);
         launchcast.withdrawFees();
         require(token.balanceOf(FEE_RECIPIENT) == 5 * 10 ** 6, "wrong fee");
     }
