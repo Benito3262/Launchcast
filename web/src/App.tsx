@@ -7,7 +7,7 @@ const chain = defineChain({
   rpcUrls: { default: { http: [import.meta.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com"] } },
   blockExplorers: { default: { name: "Robinhood Explorer", url: "https://explorer.testnet.chain.robinhood.com" } }, testnet: true,
 });
-const address = (import.meta.env.VITE_LAUNCHCAST_ADDRESS || "") as Address;
+const configuredEnvAddress = import.meta.env.VITE_LAUNCHCAST_ADDRESS || "";
 const abi = [
  {type:"function",name:"owner",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
  {type:"function",name:"stakeToken",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
@@ -42,6 +42,7 @@ type DiscoveredLaunch = {
  graduated:boolean|null; complete:boolean|null; transfersUnlocked:boolean|null;
 };
 type DiscoveryFile = { generatedAt:string; headBlock?:string; safeHeadBlock?:string; totalTokens:number; totalLaunches?:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
+type DeploymentConfig = { chainId:number; launchcastAddress:string; stakeTokenAddress?:string; deployedAt?:string };
 const rpc = import.meta.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com";
 const publicClient = createPublicClient({chain,transport:http(rpc)});
 const short = (s:string) => s ? s.slice(0,6)+"…"+s.slice(-4) : "—";
@@ -49,6 +50,7 @@ const date = (t:bigint) => new Date(Number(t)*1000).toLocaleString();
 const units = (v:bigint,d:number) => Number(formatUnits(v,d)).toLocaleString(undefined,{maximumFractionDigits:2});
 
 export default function App() {
+ const [address,setAddress]=useState<Address>((configuredEnvAddress || "") as Address);
  const [account,setAccount]=useState<Address>();
  const [wallet,setWallet]=useState<WalletClient>();
  const [markets,setMarkets]=useState<Market[]>([]);
@@ -105,6 +107,15 @@ export default function App() {
  },[account,configured]);
 
  useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{
+  if(/^0x[a-fA-F0-9]{40}$/.test(configuredEnvAddress))return;
+  let active=true;
+  fetch("/data/deployment.json").then(r=>{if(!r.ok)throw new Error("No Launchcast deployment config");return r.json();})
+   .then((data:DeploymentConfig)=>{
+    if(active&&data.chainId===46630&&/^0x[a-fA-F0-9]{40}$/.test(data.launchcastAddress))setAddress(getAddress(data.launchcastAddress));
+   }).catch(()=>{});
+  return()=>{active=false;};
+ },[]);
  useEffect(()=>{
   let active=true;
   fetch("/data/vibevibe-tokens.json").then(r=>{if(!r.ok)throw new Error("Discovery file not generated");return r.json();})
