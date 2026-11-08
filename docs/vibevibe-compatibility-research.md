@@ -37,9 +37,9 @@ The current factory's on-chain infrastructure getters returned:
 
 An older community reference lists factory `0xe794217880011f9cA6961340eD5c16EC9559Fea0` and locker `0x7771E60708060c43C8562c4544fBd5c365e549c0`. Those are not the active factory/locker pair for the current V6 feed checked here. The `0xe794...` factory reports a different launch count and does not recognise a token returned by the current feed. Do not substitute it for the active factory.
 
-The ABI research lead is [Webmuiz/vibe-signals](https://github.com/Webmuiz/vibe-signals/blob/main/vibevibe.md). It is a community reference, not official protocol documentation. Launchcast has independently verified the active factory calls above against live testnet state.
+Blockscout currently marks the sampled V6 token, curve, active factory, and active locker as unverified contracts. The reads in this document confirm that the tested selectors return coherent live values; they do not verify the Solidity source, complete ABI, upgradeability assumptions, or security of those contracts. Do not treat successful calls as an audit or source verification.\n\nThe ABI research lead is [Webmuiz/vibe-signals](https://github.com/Webmuiz/vibe-signals/blob/main/vibevibe.md). It is a community reference, not official protocol documentation. Launchcast has independently verified the active factory calls above against live testnet state.
 
-## V6 ABI currently used
+## V6 read methods currently used (source not verified)
 
 **Factory**
 
