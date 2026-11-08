@@ -2,12 +2,34 @@
   "schemaVersion": 1,
   "chainId": 46630,
   "source": "Robinhood Chain Testnet factory event logs",
-  "generatedAt": null,
-  "headBlock": null,
-  "safeHeadBlock": null,
-  "coverage": "not_indexed",
-  "warning": "Run npm run discover from the web directory to build a recent-window registry. Three configured factories only; not settlement authority.",
-  "factories": [],
+  "generatedAt": "2026-11-08T02:22:52.558Z",
+  "headBlock": "150250510",
+  "safeHeadBlock": "150250478",
+  "coverage": "configured_factories_recent_window",
+  "warning": "Only three configured factory generations are scanned; unknown/new factories may be missing. Current token/curve getter reads are snapshots at stateReadAtBlock, not historical facts. This file is discovery data only and is never settlement authority.",
+  "factories": [
+    {
+      "generation": "retired",
+      "address": "0x4FEbC267e0C24440bcDEF72B5DBC5FE7BED091dF",
+      "bytecodePresent": true,
+      "onChainLaunchCount": "15540",
+      "deploymentBlock": "95916239"
+    },
+    {
+      "generation": "legacy",
+      "address": "0xB5B7A2f6c4EAFa2D73918fcA32d50e2126339eb9",
+      "bytecodePresent": true,
+      "onChainLaunchCount": "46878",
+      "deploymentBlock": "108435450"
+    },
+    {
+      "generation": "current",
+      "address": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
+      "bytecodePresent": true,
+      "onChainLaunchCount": "164205",
+      "deploymentBlock": "115025604"
+    }
+  ],
   "totalTokens": 0,
   "tokens": []
 }
