@@ -119,7 +119,7 @@ async function main() {
       source: "swap" as const,
       blockNumber: log.blockNumber!,
       logIndex: log.logIndex!,
-      sqrtPriceX96: log.args.sqrtPriceX96,
+      sqrtPriceX96: log.args.sqrtPriceX96!,
       liquidity: log.args.liquidity,
       transactionHash: log.transactionHash,
     })),
