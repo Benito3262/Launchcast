@@ -42,28 +42,22 @@ The web build is checked by `.github/workflows/web.yml`. No frontend deployment 
 
 ## VibeVibe token discovery
 
-A read-only event indexer is available at `web/scripts/discover-vibevibe.mjs`. It scans the three documented factory generations using `TokenLaunched` and `TokenLaunchedQuoted` logs, checks that the RPC is chain ID 46630, backs off adaptively when log queries hit range/result limits, and keeps a local resumable cache. It uses a 32-block confirmation buffer and enriches only the 50 newest discovered launches with best-effort current-state reads for token name, symbol, decimals, transfer unlock status, and curve completion/graduation.
+A read-only TypeScript event indexer is available in `services/discovery/`. It scans the three documented factory generations using `TokenLaunched` and `TokenLaunchedQuoted` logs, checks the RPC is on chain ID 46630, verifies configured factory bytecode and `launchCount()`, adapts its log-query ranges, and keeps a local resumable checkpoint. It uses a 32-block confirmation buffer and enriches only the 50 newest launches with best-effort current-state reads for token name, symbol, decimals, transfer unlock status, and curve completion/graduation.
 
-Run it from `web/`:
+Run it locally from `services/discovery/`:
 
 ```bash
 npm install
 npm run discover
 ```
 
-Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow scans the configured factories and commits the refreshed static registry to the repository.
+Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow runs the indexer and commits the refreshed static registry.
 
-The default run scans a recent 100,000-block window for each configured factory on first use, then resumes from its saved cursor with an overlap for reorg handling. To request a full historical scan:
+The default run scans a recent 100,000-block window per configured factory on first use, then resumes from its saved cursor with an overlap for reorg handling. To request a full historical scan, run `npm run discover:full` from `services/discovery/`.
 
-```bash
-npm run discover:full
-```
-
-The generated registry is written to `web/public/data/vibevibe-tokens.json`; the cache is local at `web/.cache/vibevibe-discovery.json`. The frontend reads the generated registry and shows recent launches. It does not use the registry as settlement authority.
+The local checkpoint is written to `services/discovery/data/checkpoint.json`; the generated registry is `web/public/data/vibevibe-tokens.json`. The frontend reads that registry for its recent-launch panel. It does not use discovery data as settlement authority.
 
 **Coverage limitation:** the factory list is manually maintained, not a canonical on-chain registry. Three documented generations are configured; unknown factory deployments may be missing. The public RPC is rate-limited and not production-grade. Full historical indexing may require a dedicated archive/indexing provider. Token/curve getter ABIs are reconstructed community interfaces and failed reads are left unknown. Current-state reads do not prove when a historical event happened. Never use this indexer output to decide market outcomes.
-
-The next product milestones are stronger factory-registry verification, end-to-end testnet checks, leaderboard and guild features.
 
 ## Contract implementation status
 
