@@ -42,7 +42,7 @@ The web build is checked by `.github/workflows/web.yml`. No frontend deployment 
 
 ## VibeVibe token discovery
 
-A read-only TypeScript event indexer is available in `services/discovery/`. It scans the three documented factory generations using `TokenLaunched` and `TokenLaunchedQuoted` logs, checks the RPC is on chain ID 46630, verifies configured factory bytecode and `launchCount()`, adapts its log-query ranges, and keeps a local resumable checkpoint. It uses a 32-block confirmation buffer and enriches only the 50 newest launches with best-effort current-state reads for token name, symbol, decimals, transfer unlock status, and curve completion/graduation.
+A read-only TypeScript event indexer is available in `services/discovery/`. It scans the three documented factory generations using `TokenLaunched` and `TokenLaunchedQuoted` logs, checks the RPC is on chain ID 46630, verifies configured factory bytecode and `launchCount()`, adapts its log-query ranges, and keeps a local resumable checkpoint. Because recent launch logs can be quiet even while factory counters have advanced historically, it also reads the latest 12 launch IDs per factory through `curveAt()`, then cross-checks `curve.token()` against `token.curve()` before displaying token details. The registry uses a 32-block confirmation buffer and labels current-state reads with the block at which they were taken.
 
 Run it locally from `services/discovery/`:
 
@@ -53,7 +53,7 @@ npm run discover
 
 Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow runs the indexer and commits the refreshed static registry.
 
-The default run scans a recent 100,000-block window per configured factory on first use, then resumes from its saved cursor with an overlap for reorg handling. To request a full historical scan, run `npm run discover:full` from `services/discovery/`.
+The default run scans a recent 100,000-block window for launch events on first use, then resumes from its saved cursor with an overlap for reorg handling. Independently, it enumerates the latest 12 factory launch IDs per configured factory so recent token cards are populated even when the event window is quiet. A full-history run additionally audits event IDs against each factory’s on-chain `launchCount()` and fails on gaps or count mismatches. To request that scan, run `npm run discover:full` from `services/discovery/`.
 
 The local checkpoint is written to `services/discovery/data/checkpoint.json`; the generated registry is `web/public/data/vibevibe-tokens.json`. The frontend reads that registry for its recent-launch panel. It does not use discovery data as settlement authority.
 
