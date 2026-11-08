@@ -87,11 +87,11 @@ async function main(){
   const earliest=BigInt(Math.min(...FACTORIES.map(f=>f.deploymentBlock)));
   const isFirstRun=snapshot.updatedAt===new Date(0).toISOString();
   const from=fullHistory?earliest:isFirstRun?(safeHead>recentWindow?safeHead-recentWindow:earliest):BigInt(Math.max(Number(earliest),snapshot.scannedThrough-63));
-  const factoryChecks=[];
+  const factoryChecks:Array<{generation:string;address:Address;bytecodePresent:boolean;onChainLaunchCount:string;deploymentBlock:string}>=[];
   for(const factory of FACTORIES){
     const code=await client.getCode({address:factory.address});
     if(!code||code==="0x")throw new Error("No bytecode found at configured factory "+factory.address+". Re-check the registry before indexing.");
-    const launchCount=await client.readContract({address:factory.address,abi:factoryReads,functionName:"launchCount"});
+    const launchCount=await client.readContract({address:factory.address,abi:factoryReads,functionName:"launchCount",blockNumber:safeHead});
     factoryChecks.push({generation:factory.generation,address:factory.address,bytecodePresent:true,onChainLaunchCount:launchCount.toString(),deploymentBlock:factory.deploymentBlock.toString()});
   }
   const retained=snapshot.launches.filter(item=>item.blockNumber<Number(from));
@@ -100,6 +100,14 @@ async function main(){
   const unique=new Map<string,Launch>();
   for(const item of [...retained,...discovered])unique.set(item.transactionHash+":"+item.logIndex,item);
   const launches=[...unique.values()].sort((a,b)=>b.blockNumber-a.blockNumber||b.logIndex-a.logIndex);
+  if(fullHistory){
+    for(const factory of factoryChecks){
+      const ids=launches.filter(item=>item.factory.toLowerCase()===factory.address.toLowerCase()).map(item=>BigInt(item.launchId)).sort((a,b)=>a<b?-1:a>b?1:0);
+      const expected=BigInt(factory.onChainLaunchCount);
+      if(BigInt(ids.length)!==expected)throw new Error("Full-history audit failed for "+factory.generation+": decoded "+ids.length+" launch events, but launchCount() at the scan checkpoint reports "+expected+". No registry was written.");
+      for(let i=0;i<ids.length;i++)if(ids[i]!==BigInt(i))throw new Error("Full-history audit found a launchId gap/duplicate in "+factory.generation+" at index "+i+". No registry was written.");
+    }
+  }
   const checkpoint=safeHead>0n?await client.getBlock({blockNumber:safeHead}):null;
   const cache:Snapshot={chainId:CHAIN_ID,updatedAt:new Date().toISOString(),scannedThrough:safeNumber(safeHead),checkpointHash:checkpoint?.hash||"",launches};
   await mkdir(dirname(cachePath),{recursive:true});
