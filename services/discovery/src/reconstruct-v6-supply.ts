@@ -32,7 +32,4 @@ const tokenAbi = parseAbi(["function totalSupply() view returns (uint256)"]);
 const transferEvent = parseAbiItem("event Transfer(address indexed from,address indexed to,uint256 value)");
 
 type Range = { fromBlock: bigint; toBlock: bigint };
-type RawTransfer = Log<bigint, number, false, typeof transferEvent>;
-
-function asAddress(value: string): Address {
-  if (!/^0x[0-9a¶»§q«^
+type RawTransfer = Log<bigint, 
