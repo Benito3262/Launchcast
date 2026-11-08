@@ -49,6 +49,126 @@ function safeNumber(value:bigint|null|undefined):number {
   if(value===null||value===undefined||value>BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Unsafe block number returned by RPC.");
   return Number(value);
 }
+
+/**
+ * Experimental, read-only V6 adapter.
+ * Kept separate from the older curveAt/launchTimestamp/graduated adapter.
+ * Opt-in only: address and ABI still require independent Launchcast RPC checks.
+ */
+const V6_FACTORY = "0xe794217880011f9cA6961340eD5c16EC9559Fea0" as Address;
+const v6FactoryReads = parseAbi([
+  "function launchCount() view returns (uint256)",
+  "function tokenOfLaunch(uint256 launchId) view returns (address)",
+  "function curveOf(address token) view returns (address)",
+  "function isV6Token(address token) view returns (bool)",
+  "function isV6Curve(address curve) view returns (bool)",
+]);
+const v6TokenReads = parseAbi([
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function totalSupply() view returns (uint256)",
+  "function curve() view returns (address)",
+  "function transfersUnlocked() view returns (bool)",
+]);
+const v6CurveReads = parseAbi([
+  "function token() view returns (address)",
+  "function pairCurrency() view returns (address)",
+  "function complete() view returns (bool)",
+  "function sold() view returns (uint120)",
+  "function targetPairUnits() view returns (uint256)",
+  "function pairPrincipal() view returns (uint128)",
+  "function createdAt() view returns (uint256)",
+]);
+
+async function discoverV6Tokens(safeHead: bigint, limit: number) {
+  const code = await client.getCode({ address: V6_FACTORY, blockNumber: safeHead });
+  if (!code || code === "0x") throw new Error("V6 factory has no bytecode at the selected block.");
+
+  const launchCount = await client.readContract({
+    address: V6_FACTORY, abi: v6FactoryReads, functionName: "launchCount", blockNumber: safeHead,
+  });
+  const first = launchCount > BigInt(limit) ? launchCount - BigInt(limit) : 0n;
+  const tokens: Array<Record<string, unknown>> = [];
+
+  for (let launchId = first; launchId < launchCount; launchId++) {
+    try {
+      const token = await client.readContract({
+        address: V6_FACTORY, abi: v6FactoryReads, functionName: "tokenOfLaunch",
+        args: [launchId], blockNumber: safeHead,
+      });
+      if (token.toLowerCase() === "0x0000000000000000000000000000000000000000") continue;
+      const isV6Token = await client.readContract({
+        address: V6_FACTORY, abi: v6FactoryReads, functionName: "isV6Token",
+        args: [token], blockNumber: safeHead,
+      });
+      if (!isV6Token) continue;
+
+      const curve = await client.readContract({
+        address: V6_FACTORY, abi: v6FactoryReads, functionName: "curveOf",
+        args: [token], blockNumber: safeHead,
+      });
+      if (curve.toLowerCase() === "0x0000000000000000000000000000000000000000") continue;
+
+      const [curveCode, isV6Curve] = await Promise.all([
+        client.getCode({ address: curve, blockNumber: safeHead }),
+        client.readContract({
+          address: V6_FACTORY, abi: v6FactoryReads, functionName: "isV6Curve",
+          args: [curve], blockNumber: safeHead,
+        }),
+      ]);
+      if (!curveCode || curveCode === "0x" || !isV6Curve) continue;
+
+      const [curveToken, tokenCurve] = await Promise.all([
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "token", blockNumber: safeHead }),
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "curve", blockNumber: safeHead }),
+      ]);
+      if (curveToken.toLowerCase() !== token.toLowerCase() || tokenCurve.toLowerCase() !== curve.toLowerCase()) {
+        console.warn("V6 adapter skipped mismatched token/curve linkage:", launchId.toString());
+        continue;
+      }
+
+      const [
+        name, symbol, decimals, totalSupply, transfersUnlocked,
+        pairCurrency, complete, sold, targetPairUnits, pairPrincipal, createdAt,
+      ] = await Promise.all([
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "name", blockNumber: safeHead }),
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "symbol", blockNumber: safeHead }),
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "decimals", blockNumber: safeHead }),
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "totalSupply", blockNumber: safeHead }),
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "transfersUnlocked", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "pairCurrency", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "complete", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "sold", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "targetPairUnits", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "pairPrincipal", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "createdAt", blockNumber: safeHead }),
+      ]);
+
+      tokens.push({
+        chainId: CHAIN_ID, generation: "v6-research", factory: V6_FACTORY,
+        launchId: launchId.toString(), token, curve, name, symbol, decimals: Number(decimals),
+        totalSupply: totalSupply.toString(), transfersUnlocked, pairCurrency, complete,
+        graduated: complete, sold: sold.toString(), targetPairUnits: targetPairUnits.toString(),
+        pairPrincipal: pairPrincipal.toString(), createdAt: createdAt.toString(),
+        stateReadAtBlock: safeHead.toString(),
+      });
+    } catch (error) {
+      console.warn("V6 adapter could not inspect launch", launchId.toString(), String(error));
+    }
+    await new Promise(resolve => setTimeout(resolve, 75));
+  }
+
+  return {
+    schemaVersion: 1, chainId: CHAIN_ID,
+    source: "Opt-in V6 factory enumeration with factory flags and bidirectional token/curve checks",
+    generatedAt: new Date().toISOString(), factory: V6_FACTORY,
+    factoryLaunchCount: launchCount.toString(), readAtBlock: safeHead.toString(),
+    coverage: "latest_launches_only", totalTokens: tokens.length, tokens,
+    warning: "Experimental read-only V6 discovery. Factory address and ABI are based on independent community research and require independent verification. No price, market cap, settlement result, or creator attribution is inferred. Not settlement authority.",
+  };
+}
+
 function rangeError(error:unknown):boolean {
   const s=error instanceof Error?error.message.toLowerCase():String(error).toLowerCase();
   return ["timeout","timed out","too many","exceeds limit","limit exceeded","range too large","maximum block range","more than 10000","response size","response body exceeded","query returned"].some(x=>s.includes(x));
@@ -188,6 +308,19 @@ async function main(){
   };
   await mkdir(dirname(outputPath),{recursive:true});
   await writeFile(outputPath,JSON.stringify(registry,null,2)+"\n","utf8");
+  // V6 remains isolated from the older factory/event adapter and opt-in only.
+  if (process.env.ENABLE_V6_DISCOVERY === "true") {
+    const v6 = await discoverV6Tokens(safeHead, latestPerFactory);
+    const v6Output = resolve(process.cwd(), "../../web/public/data/vibevibe-v6-tokens.json");
+    await mkdir(dirname(v6Output), { recursive: true });
+    await writeFile(v6Output, JSON.stringify(v6, null, 2) + "\\n", "utf8");
+    console.log("V6 discovery:", JSON.stringify({
+      factory: V6_FACTORY, launchCount: v6.factoryLaunchCount,
+      records: v6.totalTokens, readAtBlock: v6.readAtBlock, output: v6Output,
+    }));
+  } else {
+    console.log("V6 discovery remains disabled. Set ENABLE_V6_DISCOVERY=true only after reviewing docs/vibevibe-compatibility-research.md.");
+  }
   const counts=Object.fromEntries(FACTORIES.map(f=>[f.generation,launches.filter(x=>x.generation===f.generation).length]));
   console.log(JSON.stringify({chainId:CHAIN_ID,head:safeNumber(head),safeHead:safeNumber(safeHead),from:safeNumber(from),launchEventsInWindow:launches.length,latestTokens:tokens.length,totalFactoryLaunches:registry.totalLaunches,factoryLaunchCounts:factoryChecks.map(item=>({generation:item.generation,count:item.onChainLaunchCount})),byGeneration:counts,factoryChecks,output:outputPath,coverage:registry.coverage},null,2));
 }
