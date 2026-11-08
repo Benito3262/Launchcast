@@ -53,6 +53,8 @@ contract Launchcast {
     mapping(uint256 marketId => mapping(address user => uint256 amount)) public noStake;
     mapping(uint256 marketId => mapping(address user => bool claimed)) public hasClaimed;
     mapping(uint256 marketId => uint256 feeAmount) public marketFee;
+    mapping(uint256 marketId => address recipient) public marketFeeRecipient;
+    mapping(address recipient => uint256 amount) public accruedFeesByRecipient;
 
     uint256 private lockState = 1;
 
@@ -176,12 +178,14 @@ contract Launchcast {
         emit WinningsClaimed(marketId, msg.sender, payout);
     }
 
-    function withdrawFees() external onlyOwner nonReentrant {
-        uint256 amount = accruedFees;
-        if (amount == 0) revert InvalidAmount();
-        accruedFees = 0;
-        _safeTransfer(address(stakeToken), feeRecipient, amount);
-        emit FeesWithdrawn(feeRecipient, amount);
+    /// @notice Each fee recipient can withdraw only fees allocated to their address at settlement.
+    function withdrawFees() external nonReentrant {
+        uint256 amount = accruedFeesByRecipient[msg.sender];
+        if (amount == 0) revert NothingToClaim();
+        accruedFeesByRecipient[msg.sender] = 0;
+        accruedFees -= amount;
+        _safeTransfer(address(stakeToken), msg.sender, amount);
+        emit FeesWithdrawn(msg.sender, amount);
     }
 
     function setFeeConfig(uint16 newFeeBps, address newFeeRecipient) external onlyOwner {
@@ -227,6 +231,9 @@ contract Launchcast {
         if (winningPool != 0 && losingPool != 0) {
             fee = (losingPool * feeBps) / 10_000;
             marketFee[marketId] = fee;
+            address recipient = feeRecipient;
+            marketFeeRecipient[marketId] = recipient;
+            accruedFeesByRecipient[recipient] += fee;
             accruedFees += fee;
         }
 
