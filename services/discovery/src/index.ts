@@ -5,7 +5,7 @@ import { CHAIN_ID, DEFAULT_RPC, FACTORIES } from "./config.js";
 
 const rpcUrl = process.env.RPC_URL || DEFAULT_RPC;
 const confirmations = Math.max(1, Number(process.env.CONFIRMATIONS || 32));
-const initialChunk = Math.max(1_000, Number(process.env.LOG_CHUNK_BLOCKS || 5_000));
+const initialChunk = Math.max(1_000, Number(process.env.LOG_CHUNK_BLOCKS || 25_000));
 const recentWindow = BigInt(process.env.RECENT_WINDOW_BLOCKS || 100_000);
 const requestFullHistory = process.argv.includes("--full-history");
 const latestPerFactory = Math.max(1, Number(process.env.LATEST_PER_FACTORY || 12));
@@ -183,6 +183,6 @@ async function main(){
   await mkdir(dirname(outputPath),{recursive:true});
   await writeFile(outputPath,JSON.stringify(registry,null,2)+"\n","utf8");
   const counts=Object.fromEntries(FACTORIES.map(f=>[f.generation,launches.filter(x=>x.generation===f.generation).length]));
-  console.log(JSON.stringify({chainId:CHAIN_ID,head:safeNumber(head),safeHead:safeNumber(safeHead),from:safeNumber(from),launchEventsInWindow:launches.length,latestTokens:tokens.length,totalFactoryLaunches:registry.totalLaunches,factoryLaunchCounts:factoryChecks.map(item=>({generation:item.generation,count:item.onChainLaunchCount})),byGeneration:counts,output:outputPath,coverage:registry.coverage},null,2));
+  console.log(JSON.stringify({chainId:CHAIN_ID,head:safeNumber(head),safeHead:safeNumber(safeHead),from:safeNumber(from),launchEventsInWindow:launches.length,latestTokens:tokens.length,totalFactoryLaunches:registry.totalLaunches,factoryLaunchCounts:factoryChecks.map(item=>({generation:item.generation,count:item.onChainLaunchCount})),byGeneration:counts,factoryChecks,output:outputPath,coverage:registry.coverage},null,2));
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
