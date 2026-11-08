@@ -5,6 +5,7 @@ pragma solidity ^0.8.24;
 interface IERC20Launchcast {
     function transfer(address to, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
+    function balanceOf(address account) external view returns (uint256);
 }
 
 /// @title Launchcast
@@ -257,15 +258,30 @@ contract Launchcast {
         market = markets[marketId];
     }
 
+    /// @dev Launchcast supports exact-transfer, non-rebasing ERC-20 tokens only.
     function _safeTransfer(address token, address to, uint256 amount) internal {
+        uint256 recipientBefore = _balanceOf(token, to);
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20Launchcast.transfer.selector, to, amount));
         if (!success || (data.length != 0 && !abi.decode(data, (bool)))) revert TransferFailed();
+        uint256 recipientAfter = _balanceOf(token, to);
+        if (recipientAfter < recipientBefore || recipientAfter - recipientBefore != amount) revert TransferFailed();
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 amount) internal {
+        uint256 contractBefore = _balanceOf(token, to);
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20Launchcast.transferFrom.selector, from, to, amount)
         );
         if (!success || (data.length != 0 && !abi.decode(data, (bool)))) revert TransferFailed();
+        uint256 contractAfter = _balanceOf(token, to);
+        if (contractAfter < contractBefore || contractAfter - contractBefore != amount) revert TransferFailed();
+    }
+
+    function _balanceOf(address token, address account) internal view returns (uint256 balance) {
+        (bool success, bytes memory data) = token.staticcall(
+            abi.encodeWithSelector(IERC20Launchcast.balanceOf.selector, account)
+        );
+        if (!success || data.length < 32) revert InvalidToken();
+        balance = abi.decode(data, (uint256));
     }
 }
