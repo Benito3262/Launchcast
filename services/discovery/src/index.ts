@@ -313,7 +313,7 @@ async function main(){
     const v6 = await discoverV6Tokens(safeHead, latestPerFactory);
     const v6Output = resolve(process.cwd(), "../../web/public/data/vibevibe-v6-tokens.json");
     await mkdir(dirname(v6Output), { recursive: true });
-    await writeFile(v6Output, JSON.stringify(v6, null, 2) + "\\n", "utf8");
+    await writeFile(v6Output, JSON.stringify(v6, null, 2) + "\n", "utf8");
     console.log("V6 discovery:", JSON.stringify({
       factory: V6_FACTORY, launchCount: v6.factoryLaunchCount,
       records: v6.totalTokens, readAtBlock: v6.readAtBlock, output: v6Output,
