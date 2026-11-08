@@ -38,10 +38,10 @@ jobs:
           restore-keys: |
             vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-
       - run: npm install
-      - name: Full-history scan on first pass; incremental refresh afterward
+      - name: Recent launch event scan plus latest curveAt records; incremental refresh afterward
         env:
-          LOG_CHUNK_BLOCKS: 100000
-        run: npm run discover:full
+          LOG_CHUNK_BLOCKS: 5000
+        run: npm run discover
       - name: Commit updated token registry
         working-directory: .
         run: |
