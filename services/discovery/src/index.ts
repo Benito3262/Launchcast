@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createPublicClient, http, parseAbi, parseAbiItem, type Address } from "viem";
 import { CHAIN_ID, DEFAULT_RPC, FACTORIES } from "./config.js";
-import { hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange } from "./v6-helpers.js";
+import { classifyV6DiscoveryStatus, hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange } from "./v6-helpers.js";
 
 const rpcUrl = process.env.RPC_URL || DEFAULT_RPC;
 const confirmations = Math.max(1, Number(process.env.CONFIRMATIONS || 32));
@@ -90,7 +90,7 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
     address: V6_FACTORY, abi: v6FactoryReads, functionName: "launchCount", blockNumber: safeHead,
   });
   const { first, endExclusive } = latestLaunchRange(launchCount, limit);
-  const tokens: Array<Record<string, unknown>> = [];
+  const tokens: Array<Record<string, unknown>> = [];\n  const diagnostics = {\n    launchIdsAttempted: Number(endExclusive - first), zeroTokenAddresses: 0, nonV6Tokens: 0,\n    zeroCurveAddresses: 0, missingCurveCode: 0, nonV6Curves: 0, mismatchedLinks: 0,\n    readErrors: 0, validatedRecords: 0,\n  };
 
   for (let launchId = first; launchId < endExclusive; launchId++) {
     try {
@@ -98,18 +98,18 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "tokenOfLaunch",
         args: [launchId], blockNumber: safeHead,
       });
-      if (isZeroAddress(token)) continue;
+      if (isZeroAddress(token)) { diagnostics.zeroTokenAddresses++; continue; }
       const isV6Token = await client.readContract({
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "isV6Token",
         args: [token], blockNumber: safeHead,
       });
-      if (!isV6Token) continue;
+      if (!isV6Token) { diagnostics.nonV6Tokens++; continue; }
 
       const curve = await client.readContract({
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "curveOf",
         args: [token], blockNumber: safeHead,
       });
-      if (isZeroAddress(curve)) continue;
+      if (isZeroAddress(curve)) { diagnostics.zeroCurveAddresses++; continue; }
 
       const [curveCode, isV6Curve] = await Promise.all([
         client.getCode({ address: curve, blockNumber: safeHead }),
@@ -118,7 +118,7 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
           args: [curve], blockNumber: safeHead,
         }),
       ]);
-      if (!curveCode || curveCode === "0x" || !isV6Curve) continue;
+      if (!curveCode || curveCode === "0x") { diagnostics.missingCurveCode++; continue; }\n      if (!isV6Curve) { diagnostics.nonV6Curves++; continue; }
 
       const [curveToken, tokenCurve] = await Promise.all([
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "token", blockNumber: safeHead }),
@@ -150,7 +150,7 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
         chainId: CHAIN_ID, generation: "v6-research", factory: V6_FACTORY,
         launchId: launchId.toString(), token, curve, name, symbol, decimals: Number(decimals),
         totalSupply: totalSupply.toString(), transfersUnlocked, pairCurrency, complete,
-        graduated: complete, sold: sold.toString(), targetPairUnits: targetPairUnits.toString(),
+        sold: sold.toString(), targetPairUnits: targetPairUnits.toString(),
         pairPrincipal: pairPrincipal.toString(), createdAt: createdAt.toString(),
         stateReadAtBlock: safeHead.toString(),
       });
