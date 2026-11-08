@@ -16,7 +16,14 @@ Read-only launch discovery for Robinhood Chain Testnet (46630). It reads factory
 From this directory:
 
     npm install
-    cp .env.example .env
     npm run discover
 
-The output is data/launches.json and is intentionally gitignored. Keep RPC provider secrets in local environment variables; never commit them.
+The first run indexes a recent 100,000-block window per configured factory. Later runs resume from a local checkpoint and re-scan a 63-block overlap. To request full history:
+
+    npm run discover:full
+
+The local checkpoint is written to `data/checkpoint.json` (gitignored). The generated frontend registry is written to `../../web/public/data/vibevibe-tokens.json`. Only the 50 newest token launches are enriched with best-effort current-state getters. These reads are snapshots at the latest safe block, not historical data.
+
+A one-click GitHub workflow is available under **Actions → Refresh VibeVibe token registry → Run workflow**. It runs the indexer and commits the static registry to the repository.
+
+Keep RPC provider secrets in local environment variables; never commit them. The public Robinhood RPC is rate-limited, so a full-history scan may take a long time or require a dedicated archive/indexing provider.
