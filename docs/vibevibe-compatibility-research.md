@@ -1,87 +1,136 @@
 # VibeVibe compatibility research for Launchcast
 
-Status: research findings only. Do not enable new market types or alter the existing contract from this document alone.
+Status: the active V6 factory, curve quote path, and one graduated Uniswap V4 price path have now been independently read on Robinhood Chain Testnet. The adapter remains read-only. Do not enable prediction-market staking from these findings alone.
 
-## What Launchcast currently supports
+## Existing Launchcast support
 
-The discovery service currently configures three older factory generations:
+The existing discovery service and deployed Launchcast contract continue to support the older market model. The legacy discovery service configures three earlier factory generations and expects the older `curveAt()`, `launchTimestamp()`, and `graduated()` getters.
 
-- retired: `0x4FEbC267e0C24440bcDEF72B5DBC5FE7BED091dF`
-- legacy: `0xB5B7A2f6c4EAFa2D73918fcA32d50e2126339eb9`
-- current (V5): `0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59`
+V6 is handled by a separate adapter and output file:
 
-It scans `TokenLaunched` / `TokenLaunchedQuoted`, reads `curveAt()`, and expects the older `launchTimestamp()` / `graduated()` interface. It does not currently support V6.
+- Command: `npm run discover:v6`
+- Required opt-in: `ENABLE_V6_DISCOVERY=true`
+- Output: `web/public/data/vibevibe-v6-tokens.json`
+- Coverage: latest launch IDs from the active V6 factory only
+- The V6 output is not merged into the legacy registry and is not used as settlement authority.
 
-## V6 research lead
+## Active V6 factory: on-chain verification
 
-An independent community project, [Webmuiz/vibe-signals](https://github.com/Webmuiz/vibe-signals), contains a VibeVibe builder reference at [vibevibe.md](https://github.com/Webmuiz/vibe-signals/blob/main/vibevibe.md). The repository was last updated 2026-10-23. Its author states the addresses and ABI below were checked against Robinhood Chain Testnet. This is useful implementation evidence, but it is not official VibeVibe documentation and Launchcast has not independently re-verified these calls in this session.
+The current VibeVibe launch feed at [the VibeVibe V6 launches API](https://testnet.vibevibe.fun/api/v1/chains/46630/v6/launches?limit=50) identified this factory for current launches:
 
-Documented V6 factory:
+- Active factory: `0xac135da186de8325047ef2afd1d16d5971f731f7`
 
-- Factory: `0xe794217880011f9cA6961340eD5c16EC9559Fea0`
-- Zap router: `0x2784448c519D01d3aE257C0aac0b7cDAd8AccEB1`
-- Graduation liquidity locker: `0x7771E60708060c43C8562c4544fBd5c365e549c0`
+Launchcast independently checked it on Robinhood Chain Testnet (chain ID 46630):
+
+- Factory bytecode is present.
+- `launchCount()` returned 1,081 at block 150391025.
+- `tokenOfLaunch()`, `isV6Token()`, `curveOf()`, and `isV6Curve()` worked for the sampled launches.
+- Both `curve.token()` and `token.curve()` matched the factory mapping.
+- The factory exposes `locker()`, `poolManager()`, and `hook()`; use these getters rather than copying addresses from older V6 research.
+- The latest 40 launch IDs were read successfully at block 150391025: 40 validated records, 36 curve price reads, 4 graduated-pool price reads, zero linkage mismatches, zero read errors, and zero pricing errors.
+
+The current factory's on-chain infrastructure getters returned:
+
+- Locker: `0xcF7D6547bc11992a6c492e508E701c79B8393930`
 - Uniswap V4 PoolManager: `0x8366a39CC670B4001A1121B8F6A443A643e40951`
-- V4 hook: `0xA5E27E3E54739162fe52C2C48E55B6dd6572e8EC`
-- VIBEVIBE pair token: `0xF1f6b050550531226Ee0257FeC4A1E575ff4c341`
+- Hook: `0xE61e46724BA5DEC31f2be031106558774A65e8ec`
 
-The V6 factory interface differs from the current indexer:
+An older community reference lists factory `0xe794217880011f9cA6961340eD5c16EC9559Fea0` and locker `0x7771E60708060c43C8562c4544fBd5c365e549c0`. Those are not the active factory/locker pair for the current V6 feed checked here. The `0xe794...` factory reports a different launch count and does not recognise a token returned by the current feed. Do not substitute it for the active factory.
 
-- `launchCount() view returns (uint256)`
-- `tokenOfLaunch(uint256) view returns (address)`
-- `curveOf(address token) view returns (address)`
-- `isV6Token(address) view returns (bool)`
-- `isV6Curve(address) view returns (bool)`
-- `LaunchCreated(uint256 indexed launchId,address indexed launcher,address indexed token,address curve,string name,string symbol,string metadataURI,address pairCurrency,uint16 taxBps,uint64 packedWeights,address projectTreasury,uint256 targetPairUnits,uint256 netPersonal,uint256 giftNetTotal,bytes32 giftRoot,uint256 giftCount)`
+The ABI research lead is [Webmuiz/vibe-signals](https://github.com/Webmuiz/vibe-signals/blob/main/vibevibe.md). It is a community reference, not official protocol documentation. Launchcast has independently verified the active factory calls above against live testnet state.
 
-V6 curve interface documented by that project:
+## V6 ABI currently used
 
-- `token()`, `pairCurrency()`, `complete()`
-- `sold()`, `targetPairUnits()`, `pairPrincipal()`
-- `currentRateBps()`, `createdAt()`
-- `quoteBuyExactIn(uint256)`
-- `quoteSell(uint256)`
+**Factory**
 
-For V6, `complete()` is documented as the graduation flag. The liquidity migrates to Uniswap V4 in the same transaction that completes the curve. The older `graduated()` and `launchTimestamp()` getters must not be assumed to exist on V6.
+```solidity
+function launchCount() view returns (uint256)
+function tokenOfLaunch(uint256 launchId) view returns (address)
+function curveOf(address token) view returns (address)
+function isV6Token(address token) view returns (bool)
+function isV6Curve(address curve) view returns (bool)
+function locker() view returns (address)
+function poolManager() view returns (address)
+function hook() view returns (address)
+```
 
-The same reference documents a fixed V6 total supply of 1,000,000,000 tokens (18 decimals), with 800,000,000 allocated to curve sales and 200,000,000 to graduated liquidity. Treat this as a research claim until verified against representative token contracts on-chain.
+**Token**
 
-## Price-source implications
+```solidity
+function name() view returns (string)
+function symbol() view returns (string)
+function decimals() view returns (uint8)
+function totalSupply() view returns (uint256)
+function curve() view returns (address)
+function transfersUnlocked() view returns (bool)
+function pairCurrency() view returns (address)
+```
 
-### Before graduation
+**Curve**
 
-V6 curves expose `pairCurrency()`, `quoteBuyExactIn()`, `pairPrincipal()`, `targetPairUnits()`, and `sold()`. The community reference uses a small exact-input quote to estimate a curve price. That is a quote-derived execution price and may include fees/curve impact; it is not automatically equivalent to a canonical spot price. The exact valuation convention must be chosen, documented, and tested before it can settle a market.
+```solidity
+function token() view returns (address)
+function pairCurrency() view returns (address)
+function complete() view returns (bool)
+function sold() view returns (uint120)
+function targetPairUnits() view returns (uint256)
+function pairPrincipal() view returns (uint128)
+function createdAt() view returns (uint256)
+function currentRateBps() view returns (uint256)
+function quoteBuyExactIn(uint256 pairIn)
+  view returns (uint256 gross, uint256 net, uint256 cost, uint256 pairFee, uint256 refund)
+```
 
-### After graduation
+For V6, `complete()` is the curve completion flag. The current sample reads showed `complete() == true` alongside `transfersUnlocked() == true` for a graduated token. The old `graduated()` and `launchTimestamp()` getters are not assumed.
 
-The community reference says the locker exposes `poolKeyOf(token)`, which returns the V4 pool key. The pool id is derived from the key, and the V4 PoolManager exposes `extsload(bytes32)` for pool state. The reference derives `sqrtPriceX96` from the pool storage word and converts it according to currency ordering.
+## Price and FDV calculation
 
-This is a promising on-chain price path, but it still requires independent verification of the locker, PoolManager storage layout, pool-key hashing, token ordering, decimals, and quote currency for each supported pool. Do not reuse a pool id or token ordering across launches.
+The V6 adapter now produces pair-denominated price and FDV snapshots. It does not produce USD values.
 
-### Supply and denomination
+### Before graduation: curve quote
 
-The V6 reference describes a fixed 1 billion token supply. If that is confirmed, price multiplied by total supply is an FDV-style valuation, not circulating market cap. The product must label it accurately.
+For an open curve, the adapter calls `quoteBuyExactIn()` with a small input equal to 0.001 units of the pair currency, adjusted for that currency's decimals. It uses the returned `cost / net` ratio and normalizes it using the token and pair-token decimals.
 
-V6 launches can use ETH or another ERC-20 as pair currency. A target denominated in USD therefore requires a trustworthy quote-asset/USD source. The reference lists VibeVibe server-side endpoints `/market/quote-usd-rates` and `/v6/pair-prices`, but those are API data, not an on-chain oracle. They must not silently become settlement authority.
+This is a small buy-side quote, not a promise of execution at that price. It includes the quote function's curve mechanics and can change with input size, tax, and curve state.
 
-A first version may be safer with thresholds denominated in the launch's own quote asset, provided the market clearly names that asset and the price/supply calculation is deterministic. Cross-pair comparisons and USD labels should wait for a verifiable conversion source.
+### After graduation: Uniswap V4 pool state
 
-## Observation and settlement
+For a completed curve, the adapter:
 
-A contract cannot wake itself at 12h or 24h. A keeper submitting a late read of the current price would change the question and is not acceptable.
+1. Reads the active locker from `factory.locker()`.
+2. Reads `poolKeyOf(token)` from that locker.
+3. Derives the PoolId from the returned PoolKey.
+4. Reads the PoolManager state using `extsload()` at the V4 pool mapping slot used by this deployment.
+5. Extracts the low 160 bits as `sqrtPriceX96` and normalizes the ratio using the token and pair-asset decimals.
 
-Before market-cap staking is enabled, define an observation window around the scheduled timestamp, a canonical block-selection rule, the exact price source and inputs, and a public record of block number, block timestamp, pool/curve state, supply and calculation. The resolver must be unable to substitute a later observation. If the chain and available infrastructure cannot prove the selected observation, keep the market disabled.
+Launchcast independently checked one graduated V6 token (`0x05a4813cd56666c80548a99f9102a0cf7d21cc73`). The derived PoolId matched the pool ID in the VibeVibe graduation record. The current `sqrtPriceX96` read from PoolManager storage also matched the most recent PoolManager `Swap` event for that PoolId. This validates the storage-read path for that sample; more graduated pools and pair types still need testing.
 
-## Required verification before implementation
+The V4 value is a pool spot price at the selected block. It is not an executable swap quote and does not include price impact or every possible hook/trading cost.
 
-1. Verify V6 factory bytecode, deployment block, `launchCount()`, `tokenOfLaunch()`, `curveOf()`, `isV6Token()`, and decoded `LaunchCreated` logs on chain 46630.
-2. Verify representative V6 curve bytecode and every getter used above, including return types and decimals.
-3. Verify V6 launch lifecycle and migration transaction on the explorer.
-4. Verify locker `poolKeyOf()`, pool-id derivation, PoolManager storage reads, and at least one known graduated token price against an independent quote.
-5. Verify quote currencies and whether a usable on-chain USD oracle exists. Do not assume one.
-6. Implement a separate V6 discovery adapter. Do not force V6 through the older `curveAt()` / `launchTimestamp()` / `graduated()` adapter.
-7. Keep V6 discovery read-only until those checks pass. Existing markets and the deployed Launchcast contract remain untouched.
+### FDV, supply, and denomination
 
-## API note
+The sampled V6 tokens reported 18 decimals and a total supply of 1,000,000,000 tokens (1e27 base units). The adapter reads `totalSupply()` per token rather than hardcoding that assumption.
 
-The same community reference documents a richer VibeVibe REST API under `https://testnet.vibevibe.fun/api/v1/chains/46630`, including launch details, market data, candles, wallet positions, guilds, and quote-currency USD rates. It explicitly says the API is server-side only and returns 403 from other websites' browsers. It may be useful for cached display data, but not as an unverified settlement source.
+`FDV = pair price × total supply`
+
+The output field `fdvPairScaled1e18` is denominated in the launch's pair currency. It is **FDV**, not circulating market cap. Pair currencies can differ between launches (ETH and ERC-20 assets such as VIBEVIBE or stock-labelled test tokens), so values in different pair currencies cannot be compared directly.
+
+The adapter does not infer USD values from a browser API, token symbol, or assumed peg. USD thresholds require a separately verified quote-asset/USD source.
+
+## What remains before 12h/24h prediction markets
+
+The price adapter is now a useful data source for current FDV display and research. It does not yet solve market settlement.
+
+1. **USD conversion:** either verify a reliable source for each pair currency or explicitly limit markets to a single quote currency and denominate thresholds in that asset.
+2. **Exact observation rule:** define the canonical block/time selection for the 12h and 24h observations. A late keeper must not be able to substitute a later price.
+3. **Observation proof:** define how the selected block, pool/curve state, token supply, pair decimals, and calculation become verifiable to the settlement contract.
+4. **More pool coverage:** test additional graduated tokens and pair currencies, including pools with different hooks or liquidity conditions.
+5. **V2 contract:** the existing Launchcast contract is immutable. Any new market type needs a separate deployment and must leave existing markets untouched.
+
+Until those are resolved, do not create or accept stakes on 12h/24h FDV markets. Current V6 prices are discovery snapshots only.
+
+## RPC and operations
+
+Robinhood's [official connection guide](https://docs.robinhood.com/chain/connecting/) identifies the public testnet RPC as rate-limited and recommends provider infrastructure such as Alchemy for reliable reads and archive access. The discovery service keeps `RPC_URL` configurable and uses the public endpoint by default. For sustained indexing or historical observation work, configure a dedicated provider endpoint through the environment; never put provider keys in source control or chat.
+
+The V6 adapter is opt-in and read-only. It does not create markets, settle markets, or make transactions.
