@@ -22,9 +22,25 @@ Launchcast is a testnet-only prediction market for verifiable activity around Vi
 
 Network details and contract addresses must be revalidated before deployment.
 
-## Planned application
+## Web application
 
-The MVP will include wallet connection, eligible markets, YES/NO positions, a portfolio, settlement/claim flows, a leaderboard and guild view, plus an admin settlement dashboard.
+A first React + Vite frontend is available in `web/`. It includes Robinhood Chain Testnet wallet connection, on-chain market reads, YES/NO betting with ERC-20 approval, a wallet portfolio, permissionless settlement and claims, a TestUSD faucet action, and owner-only market creation. The interface is responsive and reads market state directly from the Launchcast contract.
+
+To run it locally:
+
+```bash
+cd web
+cp .env.example .env
+# Set VITE_LAUNCHCAST_ADDRESS after the Launchcast contract is deployed.
+npm install
+npm run dev
+```
+
+The web build is checked by `.github/workflows/web.yml`. No frontend deployment or contract deployment has been performed.
+
+**Market wording:** the proposition is whether the curve's `graduated()` getter returns `true` when settlement is executed at or after `resolveAfter`. It does not establish whether the curve graduated before the deadline.
+
+The next product milestones are verified VibeVibe curve discovery, token metadata display, leaderboard and guild features.
 
 ## Contract implementation status
 
