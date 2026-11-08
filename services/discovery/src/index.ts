@@ -96,7 +96,7 @@ async function main(){
   const isFirstRun=snapshot.updatedAt===new Date(0).toISOString();
   const fullHistory=requestFullHistory && snapshot.fullHistoryCompleted !== true;
   const from=fullHistory?earliest:isFirstRun?(safeHead>recentWindow?safeHead-recentWindow:earliest):BigInt(Math.max(Number(earliest),snapshot.scannedThrough-63));
-  const factoryChecks:Array<{generation:string;address:Address;bytecodePresent:boolean;onChainLaunchCount:string;deploymentBlock:string;observedLaunchEvents:number|null;launchCountMatchesEventCount:boolean|null}>=[];
+  const factoryChecks:Array<{generation:string;address:Address;bytecodePresent:boolean;onChainLaunchCount:string;deploymentBlock:string;observedLaunchEvents:number|null;launchCountMatchesEventCount:boolean|null;eventAuditStatus:string|null}>=[];
   for(const factory of FACTORIES){
     const code=await client.getCode({address:factory.address});
     if(!code||code==="0x")throw new Error("No bytecode found at configured factory "+factory.address+". Re-check the registry before indexing.");
