@@ -57,7 +57,8 @@ export default function App() {
  const [busy,setBusy]=useState("");
  const [notice,setNotice]=useState("");
  const [error,setError]=useState("");
- const [tab,setTab]=useState<"markets"|"portfolio">("markets");\n const [discovery,setDiscovery]=useState<DiscoveryFile|null>(null);
+ const [tab,setTab]=useState<"markets"|"portfolio">("markets");
+ const [discovery,setDiscovery]=useState<DiscoveryFile|null>(null);
  const configured=Boolean(address && /^0x[a-fA-F0-9]{40}$/.test(address));
  const isOwner=Boolean(account && owner && account.toLowerCase()===owner.toLowerCase());
 
