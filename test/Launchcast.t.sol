@@ -42,7 +42,9 @@ contract FeeOnTransferToken {
 contract SenderFeeToken {
     mapping(address => uint256) public balanceOf;
     mapping(address => mapping(address => uint256)) public allowance;
+    address public taxedSender;
 
+    function setTaxedSender(address sender) external { taxedSender = sender; }
     function mint(address to, uint256 amount) external { balanceOf[to] += amount; }
     function approve(address spender, uint256 amount) external returns (bool) {
         allowance[msg.sender][spender] = amount;
@@ -59,7 +61,7 @@ contract SenderFeeToken {
         return true;
     }
     function _transfer(address from, address to, uint256 amount) private {
-        balanceOf[from] -= amount + 1;
+        balanceOf[from] -= from == taxedSender ? amount + 1 : amount;
         balanceOf[to] += amount;
     }
 }
@@ -256,6 +258,7 @@ contract LaunchcastTest {
         Launchcast taxedLaunchcast = new Launchcast(address(taxedToken), FEE_RECIPIENT, 0);
         taxedToken.mint(ALICE, 1_000);
         taxedToken.mint(BOB, 1_000);
+        taxedToken.setTaxedSender(address(taxedLaunchcast));
         uint256 marketId = taxedLaunchcast.createMarket(address(curve), uint64(block.timestamp + 1 days));
 
         vm.prank(ALICE);
@@ -267,6 +270,7 @@ contract LaunchcastTest {
         vm.prank(BOB);
         taxedLaunchcast.placeBet(marketId, false, 100);
 
+        taxedToken.mint(address(taxedLaunchcast), 1); // Ensure the sender-tax transfer executes so the delta check is exercised.
         curve.setGraduated(true);
         vm.warp(block.timestamp + 2 days);
         taxedLaunchcast.settleMarket(marketId);
