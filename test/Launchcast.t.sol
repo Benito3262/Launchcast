@@ -66,12 +66,17 @@ contract SenderFeeToken {
     }
 }
 
+contract MockVibeVibeToken {
+    address public curve;
+    function setCurve(address value) external { curve = value; }
+}
+
 contract MockVibeVibeCurve {
     bool public graduated;
+    address public token;
 
-    function setGraduated(bool value) external {
-        graduated = value;
-    }
+    function setGraduated(bool value) external { graduated = value; }
+    function setToken(address value) external { token = value; }
 }
 
 contract LaunchcastTest {
@@ -85,11 +90,15 @@ contract LaunchcastTest {
     TestUSD private token;
     Launchcast private launchcast;
     MockVibeVibeCurve private curve;
+    MockVibeVibeToken private vibeToken;
 
     function setUp() public {
         token = new TestUSD();
         launchcast = new Launchcast(address(token), FEE_RECIPIENT, 500); // 5% of losing pool
         curve = new MockVibeVibeCurve();
+        vibeToken = new MockVibeVibeToken();
+        curve.setToken(address(vibeToken));
+        vibeToken.setCurve(address(curve));
 
         token.faucet();
         token.transfer(ALICE, 1_000 * 10 ** 6);
@@ -383,6 +392,19 @@ contract LaunchcastTest {
     function testRejectsInvalidMarketId() public {
         vm.expectRevert(Launchcast.InvalidMarket.selector);
         launchcast.settleMarket(0);
+    }
+
+    function testRejectsCurveWithMismatchedTokenCurvePair() public {
+        MockVibeVibeCurve mismatched = new MockVibeVibeCurve();
+        mismatched.setToken(address(vibeToken));
+        vm.expectRevert(Launchcast.InvalidCurve.selector);
+        launchcast.createMarket(address(mismatched), uint64(block.timestamp + 1 days));
+    }
+
+    function testRejectsAlreadyGraduatedCurveAtMarketCreation() public {
+        curve.setGraduated(true);
+        vm.expectRevert(Launchcast.InvalidCurve.selector);
+        launchcast.createMarket(address(curve), uint64(block.timestamp + 1 days));
     }
 
     function testRejectsCurveWithoutGraduatedGetter() public {
