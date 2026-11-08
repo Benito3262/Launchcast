@@ -12,7 +12,7 @@ const requestFullHistory = process.argv.includes("--full-history");
 const latestPerFactory = Math.max(1, Number(process.env.LATEST_PER_FACTORY || 12));
 const cachePath = resolve(process.cwd(), "data/checkpoint.json");
 const outputPath = resolve(process.cwd(), "../../web/public/data/vibevibe-tokens.json");
-const client = createPublicClient({ transport: http(rpcUrl, { timeout: 30_000, retryCount: 0 }) });
+const client = createPublicClient({ transport: http(rpcUrl, { timeout: 30_000, retryCount: 0, fetchOptions: { headers: { "user-agent": "Mozilla/5.0 (compatible; LaunchcastDiscovery/0.1)" } } }) });
 
 const launchedEvent = parseAbiItem("event TokenLaunched(uint256 indexed launchId,address indexed token,address indexed curve,address creator,address creatorFeeRecipient,address creatorVault,uint256 initialBuy,uint256 initialTokensBought,uint16 metadataSchemaVersion,bytes32 metadataDigest,string metadataURI)");
 const launchedQuotedEvent = parseAbiItem("event TokenLaunchedQuoted(uint256 indexed launchId,address indexed token,address indexed curve,address creator,address creatorFeeRecipient,address creatorVault,address quoteCurrency,uint256 initialBuy,uint256 initialTokensBought,uint16 metadataSchemaVersion,bytes32 metadataDigest,string metadataURI)");
