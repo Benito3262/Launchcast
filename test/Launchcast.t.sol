@@ -24,6 +24,7 @@ contract LaunchcastTest {
 
     address private constant ALICE = address(0xA11CE);
     address private constant BOB = address(0xB0B);
+    address private constant CAROL = address(0xCA401);
     address private constant FEE_RECIPIENT = address(0xFEE);
 
     TestUSD private token;
@@ -38,6 +39,7 @@ contract LaunchcastTest {
         token.faucet();
         token.transfer(ALICE, 1_000 * 10 ** 6);
         token.transfer(BOB, 1_000 * 10 ** 6);
+        token.transfer(CAROL, 1_000 * 10 ** 6);
     }
 
     function testYesWinsAndFeeIsTakenFromLosingPool() public {
@@ -158,6 +160,47 @@ contract LaunchcastTest {
 
         require(token.balanceOf(FEE_RECIPIENT) == 5 * 10 ** 6, "old recipient could not withdraw");
         require(launchcast.accruedFees() == 0, "aggregate fees not cleared");
+    }
+
+
+    function testProportionalPayoutAndRoundingDust() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 3);
+        _bet(BOB, marketId, true, 7);
+        _bet(CAROL, marketId, false, 11);
+
+        curve.setGraduated(true);
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+
+        vm.prank(ALICE);
+        uint256 alicePayout = launchcast.claim(marketId);
+        vm.prank(BOB);
+        uint256 bobPayout = launchcast.claim(marketId);
+        require(alicePayout == 6, "wrong first proportional payout");
+        require(bobPayout == 14, "wrong second proportional payout");
+        require(token.balanceOf(address(launchcast)) == 1, "rounding remainder mismatch");
+        require(launchcast.accruedFees() == 0, "unexpected fee");
+    }
+
+    function testNoFeeWhenThereIsNoLosingPool() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 100 * 10 ** 6);
+
+        curve.setGraduated(true);
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+
+        vm.prank(ALICE);
+        uint256 payout = launchcast.claim(marketId);
+        require(payout == 100 * 10 ** 6, "winner stake not returned");
+        require(launchcast.marketFee(marketId) == 0, "fee charged without losing pool");
+        require(launchcast.accruedFees() == 0, "fees accrued without losing pool");
+    }
+
+    function testConstructorRejectsNonContractStakeToken() public {
+        vm.expectRevert(Launchcast.InvalidToken.selector);
+        new Launchcast(address(0x1234), FEE_RECIPIENT, 500);
     }
 
     function testCannotSettleBeforeResolveAfter() public {
