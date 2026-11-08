@@ -11,6 +11,33 @@ interface Vm {
     function expectRevert(bytes4 revertData) external;
 }
 
+
+contract FeeOnTransferToken {
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+
+    function mint(address to, uint256 amount) external { balanceOf[to] += amount; }
+    function approve(address spender, uint256 amount) external returns (bool) {
+        allowance[msg.sender][spender] = amount;
+        return true;
+    }
+    function transfer(address to, uint256 amount) external returns (bool) {
+        _transfer(msg.sender, to, amount);
+        return true;
+    }
+    function transferFrom(address from, address to, uint256 amount) external returns (bool) {
+        require(allowance[from][msg.sender] >= amount, "allowance");
+        allowance[from][msg.sender] -= amount;
+        _transfer(from, to, amount);
+        return true;
+    }
+    function _transfer(address from, address to, uint256 amount) private {
+        uint256 fee = amount / 100;
+        balanceOf[from] -= amount;
+        balanceOf[to] += amount - fee;
+    }
+}
+
 contract MockVibeVibeCurve {
     bool public graduated;
 
@@ -181,6 +208,20 @@ contract LaunchcastTest {
         require(bobPayout == 14, "wrong second proportional payout");
         require(token.balanceOf(address(launchcast)) == 1, "rounding remainder mismatch");
         require(launchcast.accruedFees() == 0, "unexpected fee");
+    }
+
+
+    function testRejectsFeeOnTransferStakeToken() public {
+        FeeOnTransferToken taxedToken = new FeeOnTransferToken();
+        Launchcast taxedLaunchcast = new Launchcast(address(taxedToken), FEE_RECIPIENT, 500);
+        taxedToken.mint(ALICE, 1_000);
+        uint256 marketId = taxedLaunchcast.createMarket(address(curve), uint64(block.timestamp + 1 days));
+
+        vm.prank(ALICE);
+        taxedToken.approve(address(taxedLaunchcast), 100);
+        vm.expectRevert(Launchcast.TransferFailed.selector);
+        vm.prank(ALICE);
+        taxedLaunchcast.placeBet(marketId, true, 100);
     }
 
     function testNoFeeWhenThereIsNoLosingPool() public {
