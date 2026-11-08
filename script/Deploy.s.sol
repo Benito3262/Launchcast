@@ -12,9 +12,14 @@ interface VmDeploy {
 }
 
 contract DeployLaunchcast {
+    error WrongChain();
+    uint256 private constant ROBINHOOD_CHAIN_TESTNET_ID = 46630;
+
     VmDeploy private constant vm = VmDeploy(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     function run() external {
+        if (block.chainid != ROBINHOOD_CHAIN_TESTNET_ID) revert WrongChain();
+
         uint256 privateKey = vm.envUint("PRIVATE_KEY");
         address feeRecipient = vm.envAddress("FEE_RECIPIENT");
 
