@@ -385,6 +385,12 @@ contract LaunchcastTest {
         launchcast.createMarket(address(token), uint64(block.timestamp + 1 days));
     }
 
+
+    function testCannotSetLaunchcastAsFeeRecipient() public {
+        vm.expectRevert(Launchcast.InvalidAddress.selector);
+        launchcast.setFeeConfig(500, address(launchcast));
+    }
+
     function testOwnerCannotSetFeeAboveMaximum() public {
         vm.expectRevert(Launchcast.InvalidFee.selector);
         launchcast.setFeeConfig(1_001, FEE_RECIPIENT);
