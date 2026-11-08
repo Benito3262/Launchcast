@@ -168,18 +168,41 @@ export default function App() {
  const launchForCurve=(curveAddress:string)=>discovery?.tokens.find(item=>item.curve.toLowerCase()===curveAddress.toLowerCase());
  const visibleLaunches=useMemo(()=>discovery?.tokens.filter(item=>[item.name,item.symbol,item.token,item.curve,item.generation,item.launchId].some(value=>value?.toLowerCase().includes(discoveryQuery.toLowerCase())))||[],[discovery,discoveryQuery]);
 
- function connect(){setError("");setWalletModal(true);window.dispatchEvent(new Event("eip6963:requestProvider"));if(window.ethereum){setWalletChoices(current=>current.some(item=>item.info.uuid==="injected-default")?current:[...current,{info:{uuid:"injected-default",name:"Browser wallet",icon:"",rdns:"injected"},provider:window.ethereum!}]);}}
+ function connect(){
+  setError("");
+  const injected=window.ethereum;
+  const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(injected){
+   void connectWithProvider(injected,"Browser wallet");
+   return;
+  }
+  if(mobile){
+   void connectWalletConnect();
+   return;
+  }
+  setWalletModal(true);
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+ }
  async function connectWithProvider(provider:Eip1193Provider,label:string){
   setError("");
+  setBusy("Connecting wallet");
   try{
    const client=createWalletClient({chain,transport:custom(provider as never)});
    const [user]=await client.requestAddresses();
-   await client.switchChain({id:46630}).catch(async()=>{
-    await provider.request({method:"wallet_addEthereumChain",params:[{chainId:"0xb626",chainName:chain.name,nativeCurrency:chain.nativeCurrency,rpcUrls:[rpc],blockExplorerUrls:[chain.blockExplorers.default.url]}]});
-    await client.switchChain({id:46630});
-   });
+   const currentChain=await provider.request({method:"eth_chainId"}) as string;
+   if(Number.parseInt(currentChain,16)!==46630){
+    try{
+     await provider.request({method:"wallet_switchEthereumChain",params:[{chainId:"0xb626"}]});
+    }catch(switchError){
+     const code=(switchError as {code?:number})?.code;
+     if(code!==4902)throw switchError;
+     await provider.request({method:"wallet_addEthereumChain",params:[{chainId:"0xb626",chainName:chain.name,nativeCurrency:chain.nativeCurrency,rpcUrls:[rpc],blockExplorerUrls:[chain.blockExplorers.default.url]}]});
+     await provider.request({method:"wallet_switchEthereumChain",params:[{chainId:"0xb626"}]});
+    }
+   }
    setWallet(client);setActiveProvider(provider);setAccount(user);setWalletLabel(label);setWalletModal(false);setNotice("Connected with "+label+" on Robinhood Chain Testnet.");
   }catch(e){setError(e instanceof Error?e.message:"Wallet connection failed.");}
+  finally{setBusy("");}
  }
  async function connectWalletConnect(){
   const projectId=import.meta.env.VITE_REOWN_PROJECT_ID;
