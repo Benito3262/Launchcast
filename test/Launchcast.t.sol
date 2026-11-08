@@ -244,6 +244,7 @@ contract LaunchcastTest {
         SenderFeeToken taxedToken = new SenderFeeToken();
         Launchcast taxedLaunchcast = new Launchcast(address(taxedToken), FEE_RECIPIENT, 500);
         taxedToken.mint(ALICE, 1_000);
+        taxedToken.setTaxedSender(ALICE);
         uint256 marketId = taxedLaunchcast.createMarket(address(curve), uint64(block.timestamp + 1 days));
 
         vm.prank(ALICE);
