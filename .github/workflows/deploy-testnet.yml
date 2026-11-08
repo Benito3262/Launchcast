@@ -1,0 +1,83 @@
+name: Deploy Launchcast to Robinhood Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_deployment:
+        description: "Explicitly confirm deployment to Robinhood Chain Testnet (chain ID 46630)"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_testnet_deployment == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Verify testnet and deployment secrets
+        env:
+          RPC_URL: https://rpc.testnet.chain.robinhood.com
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
+        run: |
+          test -n "$PRIVATE_KEY" || (echo "Missing LAUNCHCAST_TESTNET_PRIVATE_KEY repository secret." && exit 1)
+          test -n "$FEE_RECIPIENT" || (echo "Missing LAUNCHCAST_FEE_RECIPIENT repository secret." && exit 1)
+          CHAIN_ID="$(cast chain-id --rpc-url "$RPC_URL")"
+          echo "Connected chain ID: $CHAIN_ID"
+          test "$CHAIN_ID" = "46630" || (echo "Refusing to deploy: RPC is not Robinhood Chain Testnet." && exit 1)
+
+      - name: Run contract test suite
+        run: forge test
+
+      - name: Deploy TestUSD and Launchcast
+        env:
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
+          RPC_URL: https://rpc.testnet.chain.robinhood.com
+        run: forge script script/Deploy.s.sol:DeployLaunchcast --rpc-url "$RPC_URL" --broadcast --slow
+
+      - name: Summarize deployed contract addresses
+        if: success()
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'broadcast/Deploy.s.sol/46630/run-latest.json';
+          const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const txs = data.transactions || [];
+          const deployments = txs.filter(tx => tx.transactionType === 'CREATE' && tx.contractAddress);
+          const lines = [
+            '## Launchcast testnet deployment',
+            '',
+            'Network: Robinhood Chain Testnet (46630)',
+            '',
+            '| Contract | Address |',
+            '|---|---|',
+            ...deployments.map(tx => `| ${tx.contractName || 'Contract'} | \`${tx.contractAddress}\` |`),
+            '',
+            'Save these addresses. Do not share your private key.'
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
+          NODE
+
+      - name: Upload deployment record
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launchcast-testnet-deployment
+          path: broadcast/Deploy.s.sol/46630/run-latest.json
+          if-no-files-found: error
+          retention-days: 30
