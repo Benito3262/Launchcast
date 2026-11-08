@@ -10,7 +10,7 @@
 ## Market lifecycle
 
 1. The owner creates a market for a VibeVibe curve address and a future `resolveAfter` timestamp.
-2. Creation performs a read-only call to `graduated()` to check that the target exposes the expected boolean getter.
+2. Creation checks that the curve exposes `graduated()` and is currently ungraduated, then verifies the reciprocal `curve.token()` and `token.curve()` addresses. A mismatched token/curve pair is rejected.
 3. Users approve TestUSD and stake on YES or NO before `resolveAfter`.
 4. At or after `resolveAfter`, any wallet may submit `settleMarket`. The contract reads `graduated()` directly from the configured curve and records that boolean as the outcome.
 5. Users call `claim` individually after resolution.
@@ -29,7 +29,7 @@ The chain does not execute a transaction automatically at the deadline. The mark
 
 ## Trust and control assumptions
 
-- Market creation is owner-only. The owner chooses the curve address and settlement timestamp; this is a meaningful trust assumption.
+- Market creation is owner-only. The owner chooses the curve address and settlement timestamp; this is a meaningful trust assumption. The contract validates reciprocal curve/token identity and initial graduation state, while the frontend additionally requires the curve to appear in the indexed factory-launch registry. The contract does not yet cryptographically prove factory provenance against an on-chain factory allowlist.
 - Settlement itself is permissionless and reads the VibeVibe contract directly.
 - The fee rate and future fee recipient are owner-controlled. The initial deployment sets the fee to 0 bps; fee policy must be disclosed before any non-zero fee is enabled. A recipient can withdraw only fees already allocated to its own address.
 - The current implementation has no user cancellation or early refund path.
@@ -47,7 +47,8 @@ The live VibeVibe ABI, deployed curve implementation, and exact meaning of `grad
 
 - [ ] Run `forge build` and `forge test -vv` locally.
 - [ ] Review Solidity with an independent security reviewer.
-- [ ] Verify VibeVibe curve getter ABI and semantics against live testnet contracts.
+- [ ] Verify VibeVibe curve/token getter ABI and semantics against live testnet contracts.
+- [ ] Verify that the indexed factory event signatures and launch counts match full on-chain history.
 - [ ] Verify factory-generation coverage and curve address provenance.
 - [ ] Test fee, rounding, empty-side refund, and multiple-user payout cases.
 - [ ] Test with a dedicated wallet and test tokens only.
