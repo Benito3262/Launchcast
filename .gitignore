@@ -9,4 +9,5 @@ lib/
 
 # Local discovery snapshots
 services/discovery/data/
-\nweb/.cache/\n
+
+web/.cache/
