@@ -7,7 +7,7 @@ const rpcUrl = process.env.RPC_URL || DEFAULT_RPC;
 const confirmations = Math.max(1, Number(process.env.CONFIRMATIONS || 32));
 const initialChunk = Math.max(1_000, Number(process.env.LOG_CHUNK_BLOCKS || 5_000));
 const recentWindow = BigInt(process.env.RECENT_WINDOW_BLOCKS || 100_000);
-const fullHistory = process.argv.includes("--full-history");
+const requestFullHistory = process.argv.includes("--full-history");
 const latestPerFactory = Math.max(1, Number(process.env.LATEST_PER_FACTORY || 12));
 const cachePath = resolve(process.cwd(), "data/checkpoint.json");
 const outputPath = resolve(process.cwd(), "../../web/public/data/vibevibe-tokens.json");
@@ -94,6 +94,7 @@ async function main(){
   const snapshot=await readSnapshot();
   const earliest=BigInt(Math.min(...FACTORIES.map(f=>f.deploymentBlock)));
   const isFirstRun=snapshot.updatedAt===new Date(0).toISOString();
+  const fullHistory=requestFullHistory && isFirstRun;
   const from=fullHistory?earliest:isFirstRun?(safeHead>recentWindow?safeHead-recentWindow:earliest):BigInt(Math.max(Number(earliest),snapshot.scannedThrough-63));
   const factoryChecks:Array<{generation:string;address:Address;bytecodePresent:boolean;onChainLaunchCount:string;deploymentBlock:string}>=[];
   for(const factory of FACTORIES){
