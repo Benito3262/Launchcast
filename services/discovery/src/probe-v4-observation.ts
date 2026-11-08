@@ -112,7 +112,7 @@ async function main() {
       source: "initialize" as const,
       blockNumber: log.blockNumber!,
       logIndex: log.logIndex!,
-      sqrtPriceX96: log.args.sqrtPriceX96,
+      sqrtPriceX96: log.args.sqrtPriceX96!,
       transactionHash: log.transactionHash,
     })),
     ...swaps.map(log => ({
