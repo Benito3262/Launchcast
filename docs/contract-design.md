@@ -4,6 +4,7 @@
 
 - `Launchcast.sol` holds the market state, ERC-20 stakes, settlement result, fee accounting, and claims.
 - `TestUSD.sol` is a faucet-only test token. It is not a real stablecoin and has no monetary value.
+- The configured stake token must be a conventional, exact-transfer, non-rebasing ERC-20. The contract checks balance deltas on every deposit and payout and reverts if the received amount differs from the requested amount. This catches fee-on-transfer behavior, but no generic contract check can guarantee that a token will never rebase or later change its behavior; the token implementation must be reviewed and trusted.
 - `Deploy.s.sol` deploys a fresh TestUSD and Launchcast instance using the deployer's testnet wallet.
 
 ## Market lifecycle
@@ -24,7 +25,7 @@ The chain does not execute a transaction automatically at the deadline. The mark
 - If the winning side has no opposing pool, winning participants receive their original stakes.
 - Fee amount and fee recipient are snapshotted when a market settles, so later global fee changes or recipient rotation do not rewrite that market's payout or redirect its accrued fee.
 - Accrued fees are tracked per snapshotted recipient. Each recipient can withdraw only the balance assigned to their own address; changing the current fee recipient does not transfer ownership of previously accrued fees.
-- Integer division can leave a small rounding remainder in the contract. A later audited version should include a documented dust-recovery policy that cannot affect user claims.
+- Integer division can leave a small rounding remainder in the contract. There is intentionally no owner sweep or dust withdrawal in this version, so the remainder cannot be accidentally or administratively taken from the pool. A later audited version may add a dust-recovery policy only after all claim liabilities are provably extinguished.
 
 ## Trust and control assumptions
 
