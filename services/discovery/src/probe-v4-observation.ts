@@ -55,12 +55,11 @@ async function main() {
     client.readContract({ address: factory, abi: factoryReads, functionName: "hook", blockNumber: head }),
   ]);
   if (!isV6) throw new Error("Token is not recognised by the active V6 factory.");
-  const [createdAt, complete, pairCurrency, tokenDecimals, totalSupply] = await Promise.all([
+  const [createdAt, complete, pairCurrency, tokenDecimals] = await Promise.all([
     client.readContract({ address: curve, abi: curveReads, functionName: "createdAt", blockNumber: head }),
     client.readContract({ address: curve, abi: curveReads, functionName: "complete", blockNumber: head }),
     client.readContract({ address: curve, abi: curveReads, functionName: "pairCurrency", blockNumber: head }),
     client.readContract({ address: token, abi: tokenReads, functionName: "decimals", blockNumber: head }),
-    client.readContract({ address: token, abi: tokenReads, functionName: "totalSupply", blockNumber: head }),
   ]);
   if (!complete) throw new Error("Token has not completed its curve; this probe only supports graduated V4 pools.");
 
@@ -130,7 +129,18 @@ async function main() {
   const eventBlock = await client.getBlock({ blockNumber: selected.blockNumber });
   const ageSeconds = observation.timestamp - eventBlock.timestamp;
   const price = v4PriceScaled1e18(selected.sqrtPriceX96, tokenIsCurrency0, Number(tokenDecimals), pairDecimals);
-  const fdv = fdvPairScaled1e18(price, totalSupply, Number(tokenDecimals));
+  let totalSupplyAtObservation: bigint | null = null;
+  let fdv: bigint | null = null;
+  let supplyStatus = "historical_supply_unavailable";
+  try {
+    totalSupplyAtObservation = await client.readContract({
+      address: token, abi: tokenReads, functionName: "totalSupply", blockNumber: observation.blockNumber,
+    });
+    fdv = fdvPairScaled1e18(price, totalSupplyAtObservation, Number(tokenDecimals));
+    supplyStatus = "historical_supply_read";
+  } catch {
+    // Do not substitute current supply into a historical FDV calculation.
+  }
   const poolStateSlot = keccak256(encodeAbiParameters(
     [{ type: "bytes32" }, { type: "uint256" }], [poolId, 6n],
   ));
@@ -161,8 +171,10 @@ async function main() {
     liveStateSqrtPrice,
     matchesCurrentPoolState: liveStateSqrtPrice === null ? null : liveStateSqrtPrice === selected.sqrtPriceX96.toString(),
     pricePairPerTokenScaled1e18: price.toString(),
-    fdvPairScaled1e18: fdv.toString(),
-    warning: "Event-derived V4 spot snapshot only. This does not provide USD conversion, liquidity guarantees, an oracle attestation, or market settlement.",
+    totalSupplyAtObservation: totalSupplyAtObservation?.toString() ?? null,
+    supplyStatus,
+    fdvPairScaled1e18: fdv?.toString() ?? null,
+    warning: "Event-derived V4 spot snapshot only. FDV is omitted unless totalSupply is readable at the historical observation block. This does not provide USD conversion, liquidity guarantees, an oracle attestation, or market settlement.",
   }, null, 2));
 }
 
