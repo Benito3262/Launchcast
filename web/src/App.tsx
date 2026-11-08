@@ -58,12 +58,19 @@ type DiscoveredLaunch = {
  graduated:boolean|null; complete:boolean|null; transfersUnlocked:boolean|null;
 };
 type DiscoveryFile = { generatedAt:string; headBlock?:string; safeHeadBlock?:string; totalTokens:number; totalLaunches?:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
+type V6Pricing = { status:string; method:string|null; pairSymbol:string; pairDecimals:number; pricePairPerTokenScaled1e18:string|null; fdvPairScaled1e18:string|null };
+type V6Launch = { token:string; curve:string; launchId:string; name:string; symbol:string; complete:boolean; pairCurrency:string; pairSymbol:string; pairDecimals:number; pricing:V6Pricing };
+type V6DiscoveryFile = { generatedAt:string; factory:string; factoryLaunchCount:string; readAtBlock:string; status:string; totalTokens:number; tokens:V6Launch[]; warning:string };
 type DeploymentConfig = { chainId:number; launchcastAddress:string; stakeTokenAddress?:string; deployedAt?:string };
 const rpc = import.meta.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com";
 const publicClient = createPublicClient({chain,transport:http(rpc)});
 const short = (s:string) => s ? s.slice(0,6)+"…"+s.slice(-4) : "—";
 const date = (t:bigint) => new Date(Number(t)*1000).toLocaleString();
 const units = (v:bigint,d:number) => Number(formatUnits(v,d)).toLocaleString(undefined,{maximumFractionDigits:2});
+const scaledUnits = (value:string|null|undefined) => {
+ try { return value===null||value===undefined?"—":Number(formatUnits(BigInt(value),18)).toLocaleString(undefined,{maximumSignificantDigits:8,maximumFractionDigits:6}); }
+ catch { return "—"; }
+};
 
 export default function App() {
  const [address,setAddress]=useState<Address>((configuredEnvAddress || "") as Address);
@@ -93,6 +100,7 @@ export default function App() {
  const [error,setError]=useState("");
  const [tab,setTab]=useState<"markets"|"portfolio"|"launches"|"home"|"admin">("home");
  const [discovery,setDiscovery]=useState<DiscoveryFile|null>(null);
+ const [v6Discovery,setV6Discovery]=useState<V6DiscoveryFile|null>(null);
  const [discoveryQuery,setDiscoveryQuery]=useState("");
  const configured=Boolean(address && /^0x[a-fA-F0-9]{40}$/.test(address));
  const isOwner=Boolean(account && owner && account.toLowerCase()===owner.toLowerCase());
@@ -153,6 +161,13 @@ export default function App() {
   return()=>{active=false;};
  },[]);
  useEffect(()=>{
+  let active=true;
+  fetch("/data/vibevibe-v6-tokens.json").then(r=>{if(!r.ok)throw new Error("V6 discovery file not generated");return r.json();})
+   .then((data:V6DiscoveryFile)=>{if(active)setV6Discovery(data);})
+   .catch(()=>{if(active)setV6Discovery(null);});
+  return()=>{active=false;};
+ },[]);
+ useEffect(()=>{
   const announce=(event:Event)=>{const choice=(event as CustomEvent<WalletChoice>).detail;if(!choice?.provider||!choice.info?.uuid)return;setWalletChoices(current=>current.some(item=>item.info.uuid===choice.info.uuid)?current:[...current,choice]);};
   window.addEventListener("eip6963:announceProvider",announce);
   window.dispatchEvent(new Event("eip6963:requestProvider"));
@@ -168,6 +183,7 @@ export default function App() {
  const pageMarkets=tab==="home"?markets.slice(0,3):markets;
  const launchForCurve=(curveAddress:string)=>discovery?.tokens.find(item=>item.curve.toLowerCase()===curveAddress.toLowerCase());
  const visibleLaunches=useMemo(()=>discovery?.tokens.filter(item=>[item.name,item.symbol,item.token,item.curve,item.generation,item.launchId].some(value=>value?.toLowerCase().includes(discoveryQuery.toLowerCase())))||[],[discovery,discoveryQuery]);
+ const visibleV6Launches=useMemo(()=>v6Discovery?.tokens.filter(item=>[item.name,item.symbol,item.token,item.curve,item.launchId,item.pairSymbol].some(value=>value?.toLowerCase().includes(discoveryQuery.toLowerCase())))||[],[v6Discovery,discoveryQuery]);
 
  function connect(){
   setError("");
