@@ -130,7 +130,8 @@ A live test against graduated token `0x05a4813cd56666c80548a99f9102a0cf7d21cc73`
 - The block selector returned block 150382703, whose timestamp exactly matched the target.
 - The selected price event was a PoolManager `Swap` at block 150381952, 137 seconds before the target.
 - The event-derived `sqrtPriceX96` differed from the current PoolManager state, confirming the probe did not substitute the later current price.
-- The resulting FDV was pair-denominated in `VIBEVIBEFINAL`; it was not converted to USD.
+- The event-derived spot price was pair-denominated in `VIBEVIBEFINAL`; it was not converted to USD.
+- A stricter follow-up probe attempted `totalSupply()` at the target block. The public RPC could not serve that historical state, so the probe now omits historical FDV rather than substituting the current supply.
 
 This is a deterministic historical price-selection method for graduated V4 pools: use the last `Swap` event at or before the target block, or the `Initialize` event if no swap has occurred. A maximum event age must be enforced; otherwise a pool with no recent trading could produce a stale observation.
 
@@ -140,7 +141,7 @@ The current active curve contract is not ABI-verified by the Robinhood explorer,
 
 For a safe first FDV-market scope, consider requiring a token to have graduated before the market is created, then use V4 event history only. That would exclude curve-stage tokens from 12h/24h FDV markets until their historical observation path is verified.
 
-The V4 event probe is still a research tool, not a settlement oracle. A V2 market contract would need an explicit resolver-attestation design (including target timestamp, observation block, pool ID, event transaction/log, price, supply and calculation) or another independently verifiable proof mechanism. The trust assumption and dispute process must be disclosed before stakes are accepted.
+The V4 event probe is still a research tool, not a settlement oracle. Historical FDV also needs `totalSupply()` at the observation block or a separately verified proof that supply is immutable. The current public RPC did not provide that historical state. A V2 market contract would need an explicit resolver-attestation design (including target timestamp, observation block, pool ID, event transaction/log, price, supply and calculation) or another independently verifiable proof mechanism. The trust assumption and dispute process must be disclosed before stakes are accepted.
 
 ## USD oracle research (not integrated)
 
