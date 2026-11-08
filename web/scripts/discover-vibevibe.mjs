@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, http, parseAbiItem } from "viem";
+import { createPublicClient, http, parseAbi, parseAbiItem } from "viem";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const RPC = process.env.RPC_URL || process.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com";
@@ -23,6 +23,16 @@ const launched = parseAbiItem("event TokenLaunched(uint256 indexed launchId,addr
 const launchedQuoted = parseAbiItem("event TokenLaunchedQuoted(uint256 indexed launchId,address indexed token,address indexed curve,address creator,address creatorFeeRecipient,address creatorVault,address quoteCurrency,uint256 initialBuy,uint256 initialTokensBought,uint16 metadataSchemaVersion,bytes32 metadataDigest,string metadataURI)");
 
 const client = createPublicClient({ transport: http(RPC, { timeout: 30_000, retryCount: 0 }) });
+const tokenReads = parseAbi([
+  "function name() view returns (string)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
+  "function transfersUnlocked() view returns (bool)",
+]);
+const curveReads = parseAbi([
+  "function graduated() view returns (bool)",
+  "function complete() view returns (bool)",
+]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const errorText = (error) => String(error?.shortMessage || error?.message || error).toLowerCase();
 const isRangeError = (error) => /timeout|timed out|too many|exceeds limit|limit exceeded|response size|block range|more than|query returned/i.test(errorText(error));
@@ -94,7 +104,7 @@ async function main() {
     const key = factory.address.toLowerCase();
     const saved = cache.lastScannedByFactory[key];
     const defaultStart = fullHistory ? factory.deploymentBlock : (safeHead > DEFAULT_RECENT_WINDOW ? safeHead - DEFAULT_RECENT_WINDOW : factory.deploymentBlock);
-    const from = saved === undefined ? defaultStart : (BigInt(saved) > factory.deploymentBlock ? BigInt(saved) - CONFIRMATION_BUFFER : factory.deploymentBlock);
+    const from = fullHistory ? factory.deploymentBlock : (saved === undefined ? defaultStart : (BigInt(saved) > factory.deploymentBlock ? BigInt(saved) - CONFIRMATION_BUFFER : factory.deploymentBlock));
     if (from > safeHead) continue;
     console.log("Scanning " + factory.generation + " from " + from + " to " + safeHead + (fullHistory ? " (full-history request)" : ""));
     const logs = await scanRange(factory, from, safeHead);
@@ -111,6 +121,22 @@ async function main() {
   }
 
   const tokens = Object.values(cache.tokens).sort((a, b) => b.blockNumber - a.blockNumber || b.logIndex - a.logIndex);
+  // Enrich only the newest 50 launches. These are current-state reads, not historical snapshots.
+  for (const token of tokens.slice(0, 50)) {
+    const [name, symbol, decimals, transfersUnlocked, graduated, complete] = await Promise.all([
+      client.readContract({ address: token.token, abi: tokenReads, functionName: "name" }).catch(() => null),
+      client.readContract({ address: token.token, abi: tokenReads, functionName: "symbol" }).catch(() => null),
+      client.readContract({ address: token.token, abi: tokenReads, functionName: "decimals" }).catch(() => null),
+      client.readContract({ address: token.token, abi: tokenReads, functionName: "transfersUnlocked" }).catch(() => null),
+      client.readContract({ address: token.curve, abi: curveReads, functionName: "graduated" }).catch(() => null),
+      client.readContract({ address: token.curve, abi: curveReads, functionName: "complete" }).catch(() => null),
+    ]);
+    Object.assign(token, {
+      name, symbol, decimals: decimals === null ? null : Number(decimals),
+      transfersUnlocked, graduated, complete, stateReadAtBlock: safeHead.toString(),
+    });
+    await sleep(100);
+  }
   const output = {
     schemaVersion: 1,
     chainId: CHAIN_ID,
@@ -118,8 +144,8 @@ async function main() {
     generatedAt: new Date().toISOString(),
     headBlock: head.toString(),
     safeHeadBlock: safeHead.toString(),
-    coverage: "configured_factories_only",
-    warning: "This is not a canonical factory registry. Three known factory generations are scanned; unknown or newly deployed factories may be missing. Metadata names/symbols are not inferred from event logs. Never use this file to decide market outcomes.",
+    coverage: fullHistory ? "configured_factories_full_history" : "configured_factories_recent_window",
+    warning: "This is not a canonical factory registry. Three known factory generations are scanned; unknown or newly deployed factories may be missing. Token/curve state fields are current-state reads at stateReadAtBlock, not historical values. Never use this file to decide market outcomes.",
     factories: factories.map((f) => ({ generation: f.generation, address: f.address, deploymentBlock: f.deploymentBlock.toString(), lastScannedBlock: cache.lastScannedByFactory[f.address.toLowerCase()] || null })),
     totalTokens: tokens.length,
     tokens,
