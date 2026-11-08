@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_LAUNCHCAST_ADDRESS: string;
   readonly VITE_ROBINHOOD_TESTNET_RPC?: string;
+  readonly VITE_REOWN_PROJECT_ID?: string;
 }
 
 interface ImportMeta {
