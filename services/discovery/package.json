@@ -7,8 +7,9 @@
     "discover": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "discover:full": "tsx src/index.ts --full-history",
-    "test": "tsx --test src/v6-helpers.test.ts",
-    "discover:v6": "tsx src/index.ts --v6-only"
+    "test": "tsx --test src/*.test.ts",
+    "discover:v6": "tsx src/index.ts --v6-only",
+    "probe:curve-observation": "tsx src/probe-curve-observation.ts"
   },
   "dependencies": {
     "viem": "^2.21.54"
