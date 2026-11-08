@@ -40,7 +40,27 @@ The web build is checked by `.github/workflows/web.yml`. No frontend deployment 
 
 **Market wording:** the proposition is whether the curve's `graduated()` getter returns `true` when settlement is executed at or after `resolveAfter`. It does not establish whether the curve graduated before the deadline.
 
-The next product milestones are verified VibeVibe curve discovery, token metadata display, leaderboard and guild features.
+## VibeVibe token discovery
+
+A read-only event indexer is available at `web/scripts/discover-vibevibe.mjs`. It scans the three documented factory generations using `TokenLaunched` and `TokenLaunchedQuoted` logs, checks that the RPC is chain ID 46630, backs off adaptively when log queries hit range/result limits, and keeps a local resumable cache. It uses a 32-block confirmation buffer and enriches only the 50 newest discovered launches with best-effort current-state reads for token name, symbol, decimals, transfer unlock status, and curve completion/graduation.
+
+Run it from `web/`:
+
+```bash
+npm run discover
+```
+
+The default run scans a recent 100,000-block window for each configured factory on first use, then resumes from its saved cursor with an overlap for reorg handling. To request a full historical scan:
+
+```bash
+npm run discover:full
+```
+
+The generated registry is written to `web/public/data/vibevibe-tokens.json`; the cache is local at `web/.cache/vibevibe-discovery.json`. The frontend reads the generated registry and shows recent launches. It does not use the registry as settlement authority.
+
+**Coverage limitation:** the factory list is manually maintained, not a canonical on-chain registry. Three documented generations are configured; unknown factory deployments may be missing. The public RPC is rate-limited and not production-grade. Full historical indexing may require a dedicated archive/indexing provider. Token/curve getter ABIs are reconstructed community interfaces and failed reads are left unknown. Current-state reads do not prove when a historical event happened. Never use this indexer output to decide market outcomes.
+
+The next product milestones are stronger factory-registry verification, end-to-end testnet checks, leaderboard and guild features.
 
 ## Contract implementation status
 
