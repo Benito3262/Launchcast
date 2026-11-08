@@ -133,6 +133,32 @@ contract LaunchcastTest {
         require(payout == 195 * 10 ** 6, "settled fee changed");
     }
 
+    function testFeeRecipientRotationCannotRedirectAccruedFees() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 100 * 10 ** 6);
+        _bet(BOB, marketId, false, 100 * 10 ** 6);
+
+        curve.setGraduated(true);
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+
+        require(launchcast.marketFeeRecipient(marketId) == FEE_RECIPIENT, "recipient not snapshotted");
+        require(launchcast.accruedFeesByRecipient(FEE_RECIPIENT) == 5 * 10 ** 6, "old recipient fee missing");
+
+        address newRecipient = address(0xFEE2);
+        launchcast.setFeeConfig(500, newRecipient);
+
+        vm.expectRevert(Launchcast.NothingToClaim.selector);
+        vm.prank(newRecipient);
+        launchcast.withdrawFees();
+
+        vm.prank(FEE_RECIPIENT);
+        launchcast.withdrawFees();
+
+        require(token.balanceOf(FEE_RECIPIENT) == 5 * 10 ** 6, "old recipient could not withdraw");
+        require(launchcast.accruedFees() == 0, "aggregate fees not cleared");
+    }
+
     function testCannotSettleBeforeResolveAfter() public {
         uint256 marketId = _createMarket();
         vm.expectRevert();
