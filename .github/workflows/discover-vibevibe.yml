@@ -6,6 +6,10 @@ on:
     paths:
       - "services/discovery/**"
       - ".github/workflows/discover-vibevibe.yml"
+  push:
+    paths:
+      - "services/discovery/**"
+      - ".github/workflows/discover-vibevibe.yml"
   schedule:
     - cron: "17 */6 * * *"
 
