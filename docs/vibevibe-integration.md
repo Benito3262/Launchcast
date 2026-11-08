@@ -102,3 +102,12 @@ Sources checked November 8, 2026:
 ## Implementation rule
 
 The indexer is for token discovery, historical activity, and frontend presentation. Launchcast settlement must verify the relevant VibeVibe contract state directly on-chain, using independently validated interfaces and narrowly defined market predicates.
+
+
+## Launchcast discovery implementation status (November 8, 2026)
+
+A read-only scanner now lives in `services/discovery/`. It scans the three complete factory addresses in the community indexer's current `config/factories.ts`, decodes both launch event variants, writes a local JSON snapshot, uses adaptive log-range splitting, waits for confirmations, and re-scans a short overlap to reduce shallow-reorg risk.
+
+The scanner deliberately does not fetch metadata URIs, call the VibeVibe API, create markets, or resolve outcomes. Its output is a discovery aid only. The three prerelease factory entries in the October 8 dashboard lead remain excluded because complete addresses and on-chain verification were not reproducibly available.
+
+**Live RPC verification remains pending.** The current execution environment could not resolve/reach the public Robinhood RPC endpoint. The scanner must successfully verify chain ID, factory bytecode, event decoding, and live curve getters before the registry is treated as operational. Do not deploy or create markets from unverified discovery output.
