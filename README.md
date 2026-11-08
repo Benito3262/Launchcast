@@ -47,8 +47,11 @@ A read-only event indexer is available at `web/scripts/discover-vibevibe.mjs`. I
 Run it from `web/`:
 
 ```bash
+npm install
 npm run discover
 ```
+
+Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow scans the configured factories and commits the refreshed static registry to the repository.
 
 The default run scans a recent 100,000-block window for each configured factory on first use, then resumes from its saved cursor with an overlap for reorg handling. To request a full historical scan:
 
