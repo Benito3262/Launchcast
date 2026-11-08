@@ -38,10 +38,10 @@ type Market = {id:bigint;curve:Address;resolveAfter:bigint;yesPool:bigint;noPool
 type Position = {yes:bigint;no:bigint;claimed:boolean};
 type DiscoveredLaunch = {
  token:string; curve:string; generation:string; launchId:string; creator:string;
- blockNumber:number; name:string|null; symbol:string|null; decimals:number|null;
+ blockNumber:number|null; launchTimestamp:string|null; name:string|null; symbol:string|null; decimals:number|null;
  graduated:boolean|null; complete:boolean|null; transfersUnlocked:boolean|null;
 };
-type DiscoveryFile = { generatedAt:string; totalTokens:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
+type DiscoveryFile = { generatedAt:string; totalTokens:number; totalLaunches?:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
 const rpc = import.meta.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com";
 const publicClient = createPublicClient({chain,transport:http(rpc)});
 const short = (s:string) => s ? s.slice(0,6)+"…"+s.slice(-4) : "—";
@@ -182,10 +182,10 @@ export default function App() {
    {!configured&&<div className="notice warning"><strong>Contracts not connected yet.</strong> Add the deployed Launchcast address to <code>web/.env</code> as <code>VITE_LAUNCHCAST_ADDRESS</code>. No deployment is assumed.</div>}
    {notice&&<div className="notice success">{notice}</div>}{error&&<div className="notice danger">{error}<button className="dismiss" onClick={()=>setError("")}>Dismiss</button></div>}
    <section className="discovery-panel">
-    <div className="discovery-heading"><div><div className="eyebrow">VIBEVIBE TOKEN DISCOVERY</div><h2>Recent launches</h2><p>Launch events indexed directly from configured factory contracts.</p></div><span className="discovery-count">{discovery?discovery.totalTokens+" indexed":"INDEX NOT RUN"}</span></div>
+    <div className="discovery-heading"><div><div className="eyebrow">VIBEVIBE TOKEN DISCOVERY</div><h2>Recent launches</h2><p>Launch events indexed directly from configured factory contracts.</p></div><span className="discovery-count">{discovery?discovery.totalTokens+" recent":"INDEX NOT RUN"}</span></div>
     {!discovery||discovery.tokens.length===0?<div className="discovery-empty">The registry has not been generated yet. Use GitHub Actions → Refresh VibeVibe token registry to index verified launch events. No API-sourced or guessed token list is shown.</div>:<>
-     <div className="discovery-list">{discovery.tokens.slice(0,8).map(item=><article className="discovery-item" key={item.token}><div className="discovery-token"><strong>{item.name||"Unnamed token"} {item.symbol?"("+item.symbol+")":""}</strong><span>{item.generation.toUpperCase()} · launch #{item.launchId} · block {item.blockNumber.toLocaleString()}</span></div><div className="discovery-state"><span>{item.graduated===null?"Graduation unknown":item.graduated?"Graduated":"Not graduated"}</span><a href={"https://explorer.testnet.chain.robinhood.com/address/"+item.token} target="_blank" rel="noreferrer">Token ↗</a><a href={"https://explorer.testnet.chain.robinhood.com/address/"+item.curve} target="_blank" rel="noreferrer">Curve ↗</a>{isOwner&&<button className="select-curve" onClick={()=>setCurve(item.curve)}>Use curve</button>}</div></article>)}</div>
-     <p className="discovery-footnote">{discovery.coverage.replaceAll("_"," ")} · State reads are snapshots, not historical facts. This registry is not used to settle markets.</p>
+     <div className="discovery-list">{discovery.tokens.slice(0,8).map(item=><article className="discovery-item" key={item.token}><div className="discovery-token"><strong>{item.name||"Unnamed token"} {item.symbol?"("+item.symbol+")":""}</strong><span>{item.generation.toUpperCase()} · launch #{item.launchId} · {item.blockNumber!==null?"block "+item.blockNumber.toLocaleString():item.launchTimestamp?"launched "+new Date(Number(item.launchTimestamp)*1000).toLocaleDateString():"date unavailable"}</span></div><div className="discovery-state"><span>{item.graduated===null?"Graduation unknown":item.graduated?"Graduated":"Not graduated"}</span><a href={"https://explorer.testnet.chain.robinhood.com/address/"+item.token} target="_blank" rel="noreferrer">Token ↗</a><a href={"https://explorer.testnet.chain.robinhood.com/address/"+item.curve} target="_blank" rel="noreferrer">Curve ↗</a>{isOwner&&<button className="select-curve" onClick={()=>setCurve(item.curve)}>Use curve</button>}</div></article>)}</div>
+     <p className="discovery-footnote">{discovery.coverage.replaceAll("_"," ")} · {discovery.totalLaunches?.toLocaleString()||"Unknown"} launches reported across configured factories. State reads are snapshots, not historical facts; this registry never settles markets.</p>
     </>}
    </section>
    <section className="toolbar"><div className="tabs"><button className={tab==="markets"?"active":""} onClick={()=>setTab("markets")}>All markets <span>{markets.length}</span></button><button className={tab==="portfolio"?"active":""} onClick={()=>setTab("portfolio")}>Portfolio <span>{portfolio.length}</span></button></div><div className="toolbar-right">{account&&<span className="balance">Balance <b>{units(balance,decimals)} {symbol}</b></span>}<button className="refresh" onClick={()=>void refresh()}>↻ Refresh</button></div></section>
