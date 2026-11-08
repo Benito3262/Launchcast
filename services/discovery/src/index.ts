@@ -51,7 +51,7 @@ function safeNumber(value:bigint|null|undefined):number {
 }
 function rangeError(error:unknown):boolean {
   const s=error instanceof Error?error.message.toLowerCase():String(error).toLowerCase();
-  return ["timeout","timed out","too many","exceeds limit","limit exceeded","range too large","maximum block range","more than 10000","response size","query returned"].some(x=>s.includes(x));
+  return ["timeout","timed out","too many","exceeds limit","limit exceeded","range too large","maximum block range","more than 10000","response size","response body exceeded","query returned"].some(x=>s.includes(x));
 }
 async function readSnapshot():Promise<Snapshot> {
   try { return JSON.parse(await readFile(cachePath,"utf8")) as Snapshot; }
