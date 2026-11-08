@@ -1,0 +1,25 @@
+name: Discovery service checks
+
+on:
+  push:
+    paths:
+      - "services/discovery/**"
+      - ".github/workflows/discovery.yml"
+  pull_request:
+    paths:
+      - "services/discovery/**"
+      - ".github/workflows/discovery.yml"
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/discovery
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run typecheck
