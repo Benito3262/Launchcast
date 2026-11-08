@@ -117,6 +117,14 @@ The output field `fdvPairScaled1e18` is denominated in the launch's pair currenc
 
 The adapter does not infer USD values from a browser API, token symbol, or assumed peg. USD thresholds require a separately verified quote-asset/USD source.
 
+## USD oracle research (not integrated)
+
+Robinhood's official ecosystem documentation lists Chainlink as an oracle partner, but the Chainlink Data Streams verifier documentation currently lists a Robinhood Chain mainnet verifier, not a testnet verifier. Do not assume that the mainnet verifier can be used on chain ID 46630.
+
+[ARQ Oracle's contracts page](https://arq-oracle.com/contracts) advertises a Robinhood Chain Testnet ETH/USD feed at `0x166D542EEfFe07D501E378Edb2D113f114dd5986`. The address has on-chain bytecode and responds to custom `latestRoundData()`, `getRoundData(uint256)`, and `feedId()` calls. However, standard Chainlink metadata methods such as `decimals()`, `description()`, `version()`, and `latestAnswer()` reverted in the checks performed. The Robinhood explorer API did not return a verified ABI/source for the address in this check.
+
+This feed is therefore a research lead, not an approved settlement oracle. Before using it, verify the exact return schema and decimal scale, round ordering, update cadence, stale-data behavior, owner/governance controls, dispute process, and published audit/source. Do not hardcode 8 decimals or treat the feed as Chainlink-compatible based on its name.
+
 ## What remains before 12h/24h prediction markets
 
 The price adapter is now a useful data source for current FDV display and research. It does not yet solve market settlement.
