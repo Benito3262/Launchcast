@@ -193,7 +193,7 @@ contract Launchcast {
 
     function setFeeConfig(uint16 newFeeBps, address newFeeRecipient) external onlyOwner {
         if (newFeeBps > MAX_FEE_BPS) revert InvalidFee();
-        if (newFeeRecipient == address(0)) revert InvalidAddress();
+        if (newFeeRecipient == address(0) || newFeeRecipient == address(this)) revert InvalidAddress();
         feeBps = newFeeBps;
         feeRecipient = newFeeRecipient;
         emit FeeConfigUpdated(newFeeBps, newFeeRecipient);
