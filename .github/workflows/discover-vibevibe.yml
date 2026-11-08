@@ -2,7 +2,7 @@ name: Refresh VibeVibe token registry
 
 concurrency:
   group: vibevibe-discovery-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
@@ -35,8 +35,8 @@ jobs:
           restore-keys: |
             vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-
       - run: npm install
-      - name: Scan all configured factory history on first pass
-        run: npm run discover:full
+      - name: Scan recent launch events and enumerate latest factory launches
+        run: npm run discover
       - name: Commit updated token registry
         working-directory: .
         run: |
