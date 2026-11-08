@@ -33,6 +33,7 @@ const curveReads = parseAbi([
   "function graduated() view returns (bool)",
   "function complete() view returns (bool)",
 ]);
+const factoryReads = parseAbi(["function launchCount() view returns (uint256)"]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const errorText = (error) => String(error?.shortMessage || error?.message || error).toLowerCase();
 const isRangeError = (error) => /timeout|timed out|too many|exceeds limit|limit exceeded|response size|block range|more than|query returned/i.test(errorText(error));
@@ -100,7 +101,12 @@ async function main() {
   const cache = await readJson(CACHE_PATH, { schemaVersion: 1, lastScannedByFactory: {}, tokens: {} });
   if (cache.schemaVersion !== 1 || !cache.tokens || !cache.lastScannedByFactory) throw new Error("Discovery cache schema is not recognised. Move web/.cache/vibevibe-discovery.json aside and retry.");
 
+  const factoryChecks = [];
   for (const factory of factories) {
+    const code = await client.getCode({ address: factory.address });
+    if (!code || code === "0x") throw new Error("Configured factory has no bytecode at " + factory.address + ". Stop and re-check the registry.");
+    const launchCount = await client.readContract({ address: factory.address, abi: factoryReads, functionName: "launchCount" });
+    factoryChecks.push({ generation: factory.generation, address: factory.address, bytecodePresent: true, onChainLaunchCount: launchCount.toString() });
     const key = factory.address.toLowerCase();
     const saved = cache.lastScannedByFactory[key];
     const defaultStart = fullHistory ? factory.deploymentBlock : (safeHead > DEFAULT_RECENT_WINDOW ? safeHead - DEFAULT_RECENT_WINDOW : factory.deploymentBlock);
@@ -146,7 +152,7 @@ async function main() {
     safeHeadBlock: safeHead.toString(),
     coverage: fullHistory ? "configured_factories_full_history" : "configured_factories_recent_window",
     warning: "This is not a canonical factory registry. Three known factory generations are scanned; unknown or newly deployed factories may be missing. Token/curve state fields are current-state reads at stateReadAtBlock, not historical values. Never use this file to decide market outcomes.",
-    factories: factories.map((f) => ({ generation: f.generation, address: f.address, deploymentBlock: f.deploymentBlock.toString(), lastScannedBlock: cache.lastScannedByFactory[f.address.toLowerCase()] || null })),
+    factories: factories.map((f) => ({ ...factoryChecks.find((check) => check.address.toLowerCase() === f.address.toLowerCase()), deploymentBlock: f.deploymentBlock.toString(), lastScannedBlock: cache.lastScannedByFactory[f.address.toLowerCase()] || null })),
     totalTokens: tokens.length,
     tokens,
   };
