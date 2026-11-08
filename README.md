@@ -53,7 +53,7 @@ npm run discover
 
 Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow runs the indexer and commits the refreshed static registry.
 
-The default run scans a recent 100,000-block window for launch events on first use, then resumes from its saved cursor with an overlap for reorg handling. Independently, it enumerates the latest 12 factory launch IDs per configured factory so recent token cards are populated even when the event window is quiet. A full-history run additionally audits event IDs against each factory’s on-chain `launchCount()` and fails on gaps or count mismatches. To request that scan, run `npm run discover:full` from `services/discovery/`.
+A local `npm run discover` scans a recent 100,000-block event window, then resumes from its saved cursor with a reorg overlap. The GitHub Actions workflow performs a full-history scan and launch-ID/count audit on its first successful run, then uses incremental six-hour refreshes. Every run also enumerates the latest 12 factory launch IDs per configured factory so recent token cards are populated even when the event window is quiet. A full-history audit fails on launch-ID gaps or mismatches against on-chain `launchCount()`. To request it locally, run `npm run discover:full` from `services/discovery/`.
 
 The local checkpoint is written to `services/discovery/data/checkpoint.json`; the generated registry is `web/public/data/vibevibe-tokens.json`. The frontend reads that registry for its recent-launch panel. It does not use discovery data as settlement authority.
 
