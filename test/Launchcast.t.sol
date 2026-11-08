@@ -302,6 +302,35 @@ contract LaunchcastTest {
         require(!launchcast.getMarket(marketId).resolved, "partial batch settlement");
     }
 
+
+    function testRejectsZeroBetAmount() public {
+        uint256 marketId = _createMarket();
+        vm.expectRevert(Launchcast.InvalidAmount.selector);
+        vm.prank(ALICE);
+        launchcast.placeBet(marketId, true, 0);
+    }
+
+    function testRejectsInvalidMarketId() public {
+        vm.expectRevert(Launchcast.InvalidMarket.selector);
+        launchcast.settleMarket(0);
+    }
+
+    function testRejectsCurveWithoutGraduatedGetter() public {
+        vm.expectRevert(Launchcast.InvalidCurve.selector);
+        launchcast.createMarket(address(token), uint64(block.timestamp + 1 days));
+    }
+
+    function testOwnerCannotSetFeeAboveMaximum() public {
+        vm.expectRevert(Launchcast.InvalidFee.selector);
+        launchcast.setFeeConfig(1_001, FEE_RECIPIENT);
+    }
+
+    function testNonOwnerCannotChangeFeeConfig() public {
+        vm.expectRevert(Launchcast.Unauthorized.selector);
+        vm.prank(ALICE);
+        launchcast.setFeeConfig(100, FEE_RECIPIENT);
+    }
+
     function testCannotSettleBeforeResolveAfter() public {
         uint256 marketId = _createMarket();
         vm.expectRevert();
