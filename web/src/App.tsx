@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createPublicClient, createWalletClient, custom, defineChain, formatUnits, getAddress, http, parseUnits, type Address, type WalletClient } from "viem";
+import { createPublicClient, createWalletClient, custom, defineChain, formatUnits, getAddress, http, parseUnits, type Address, type Hex, type WalletClient } from "viem";
 
 const chain = defineChain({
   id: 46630, name: "Robinhood Chain Testnet",
@@ -101,7 +101,7 @@ export default function App() {
  async function connect(){
   setError("");if(!window.ethereum){setError("No wallet found. Open this site in MetaMask or another EVM wallet browser.");return;}
   try{
-   const client=createWalletClient({chain,transport:custom(window.ethereum)});
+   const client=createWalletClient({chain,transport:custom(window.ethereum as never)});
    const [user]=await client.requestAddresses();
    await client.switchChain({id:46630}).catch(async()=>{
     await window.ethereum!.request({method:"wallet_addEthereumChain",params:[{chainId:"0xb626",chainName:chain.name,nativeCurrency:chain.nativeCurrency,rpcUrls:[rpc],blockExplorerUrls:[chain.blockExplorers.default.url]}]});
@@ -111,7 +111,7 @@ export default function App() {
   }catch(e){setError(e instanceof Error?e.message:"Wallet connection failed.");}
  }
 
- async function transact(label:string,action:(client:WalletClient,user:Address)=>Promise<\`0x\${string}\`>){
+ async function transact(label:string,action:(client:WalletClient,user:Address)=>Promise<Hex>){
   if(!wallet||!account){setError("Connect your wallet first.");return;}
   setBusy(label);setError("");setNotice("");
   try{
