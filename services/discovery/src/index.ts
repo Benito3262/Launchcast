@@ -8,22 +8,26 @@ const confirmations = Math.max(1, Number(process.env.CONFIRMATIONS || 32));
 const initialChunk = Math.max(1_000, Number(process.env.LOG_CHUNK_BLOCKS || 5_000));
 const recentWindow = BigInt(process.env.RECENT_WINDOW_BLOCKS || 100_000);
 const fullHistory = process.argv.includes("--full-history");
+const latestPerFactory = Math.max(1, Number(process.env.LATEST_PER_FACTORY || 12));
 const cachePath = resolve(process.cwd(), "data/checkpoint.json");
 const outputPath = resolve(process.cwd(), "../../web/public/data/vibevibe-tokens.json");
 const client = createPublicClient({ transport: http(rpcUrl, { timeout: 30_000, retryCount: 0 }) });
 
 const launchedEvent = parseAbiItem("event TokenLaunched(uint256 indexed launchId,address indexed token,address indexed curve,address creator,address creatorFeeRecipient,address creatorVault,uint256 initialBuy,uint256 initialTokensBought,uint16 metadataSchemaVersion,bytes32 metadataDigest,string metadataURI)");
 const launchedQuotedEvent = parseAbiItem("event TokenLaunchedQuoted(uint256 indexed launchId,address indexed token,address indexed curve,address creator,address creatorFeeRecipient,address creatorVault,address quoteCurrency,uint256 initialBuy,uint256 initialTokensBought,uint16 metadataSchemaVersion,bytes32 metadataDigest,string metadataURI)");
-const factoryReads = parseAbi(["function launchCount() view returns (uint256)"]);
+const factoryReads = parseAbi(["function launchCount() view returns (uint256)", "function curveAt(uint256 launchId) view returns (address)"]);
 const tokenReads = parseAbi([
   "function name() view returns (string)",
   "function symbol() view returns (string)",
   "function decimals() view returns (uint8)",
   "function transfersUnlocked() view returns (bool)",
+  "function curve() view returns (address)",
 ]);
 const curveReads = parseAbi([
   "function graduated() view returns (bool)",
   "function complete() view returns (bool)",
+  "function token() view returns (address)",
+  "function launchTimestamp() view returns (uint256)",
 ]);
 
 type Launch = {
@@ -33,9 +37,13 @@ type Launch = {
   metadataURI:string; blockNumber:number; blockHash:string; transactionHash:string; logIndex:number;
 };
 type Snapshot = { chainId:number; updatedAt:string; scannedThrough:number; checkpointHash:string; launches:Launch[] };
-type RegistryToken = Launch & {
-  name:string|null; symbol:string|null; decimals:number|null; transfersUnlocked:boolean|null;
-  graduated:boolean|null; complete:boolean|null; stateReadAtBlock:string|null;
+type RegistryToken = {
+  chainId:number; generation:string; factory:Address; launchId:string; token:Address; curve:Address;
+  creator:Address|null; creatorFeeRecipient:Address|null; creatorVault:Address|null; quoteCurrency:Address|null;
+  initialBuy:string|null; initialTokensBought:string|null; metadataSchemaVersion:number|null; metadataDigest:string|null;
+  metadataURI:string|null; blockNumber:number|null; blockHash:string|null; transactionHash:string|null; logIndex:number|null;
+  launchTimestamp:string|null; name:string|null; symbol:string|null; decimals:number|null; transfersUnlocked:boolean|null;
+  graduated:boolean|null; complete:boolean|null; stateReadAtBlock:string;
 };
 function safeNumber(value:bigint|null|undefined):number {
   if(value===null||value===undefined||value>BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Unsafe block number returned by RPC.");
@@ -113,29 +121,67 @@ async function main(){
   await mkdir(dirname(cachePath),{recursive:true});
   await writeFile(cachePath,JSON.stringify(cache,null,2)+"\n","utf8");
 
-  const tokens:RegistryToken[]=[];
-  for(const item of launches.slice(0,50)){
-    const [name,symbol,decimals,transfersUnlocked,graduated,complete]=await Promise.all([
-      client.readContract({address:item.token,abi:tokenReads,functionName:"name"}).catch(()=>null),
-      client.readContract({address:item.token,abi:tokenReads,functionName:"symbol"}).catch(()=>null),
-      client.readContract({address:item.token,abi:tokenReads,functionName:"decimals"}).catch(()=>null),
-      client.readContract({address:item.token,abi:tokenReads,functionName:"transfersUnlocked"}).catch(()=>null),
-      client.readContract({address:item.curve,abi:curveReads,functionName:"graduated"}).catch(()=>null),
-      client.readContract({address:item.curve,abi:curveReads,functionName:"complete"}).catch(()=>null),
-    ]);
-    tokens.push({...item,name,symbol,decimals:decimals===null?null:Number(decimals),transfersUnlocked,graduated,complete,stateReadAtBlock:safeHead.toString()});
-    await new Promise(resolve=>setTimeout(resolve,100));
+  const tokenRecords=new Map<string,RegistryToken>();
+  const eventByToken=new Map(launches.map(item=>[item.token.toLowerCase(),item]));
+  for(const factory of factoryChecks){
+    const count=BigInt(factory.onChainLaunchCount);
+    const first=count>BigInt(latestPerFactory)?count-BigInt(latestPerFactory):0n;
+    for(let launchId=first;launchId<count;launchId++){
+      try{
+        const curve=await client.readContract({address:factory.address,abi:factoryReads,functionName:"curveAt",args:[launchId],blockNumber:safeHead});
+        if(curve.toLowerCase()==="0x0000000000000000000000000000000000000000")continue;
+        const [token,launchTimestamp]=await Promise.all([
+          client.readContract({address:curve,abi:curveReads,functionName:"token",blockNumber:safeHead}),
+          client.readContract({address:curve,abi:curveReads,functionName:"launchTimestamp",blockNumber:safeHead}).catch(()=>null),
+        ]);
+        if(token.toLowerCase()==="0x0000000000000000000000000000000000000000")continue;
+        const tokenCurve=await client.readContract({address:token,abi:tokenReads,functionName:"curve",blockNumber:safeHead}).catch(()=>null);
+        if(!tokenCurve||tokenCurve.toLowerCase()!==curve.toLowerCase()){
+          console.warn("Skipped mismatched factory/curve/token linkage:",factory.generation,launchId.toString());
+          continue;
+        }
+        const [name,symbol,decimals,transfersUnlocked,graduated,complete]=await Promise.all([
+          client.readContract({address:token,abi:tokenReads,functionName:"name",blockNumber:safeHead}).catch(()=>null),
+          client.readContract({address:token,abi:tokenReads,functionName:"symbol",blockNumber:safeHead}).catch(()=>null),
+          client.readContract({address:token,abi:tokenReads,functionName:"decimals",blockNumber:safeHead}).catch(()=>null),
+          client.readContract({address:token,abi:tokenReads,functionName:"transfersUnlocked",blockNumber:safeHead}).catch(()=>null),
+          client.readContract({address:curve,abi:curveReads,functionName:"graduated",blockNumber:safeHead}).catch(()=>null),
+          client.readContract({address:curve,abi:curveReads,functionName:"complete",blockNumber:safeHead}).catch(()=>null),
+        ]);
+        const event=eventByToken.get(token.toLowerCase());
+        tokenRecords.set(token.toLowerCase(),{
+          chainId:CHAIN_ID,generation:factory.generation,factory:factory.address,launchId:launchId.toString(),
+          token,curve,creator:event?.creator??null,creatorFeeRecipient:event?.creatorFeeRecipient??null,
+          creatorVault:event?.creatorVault??null,quoteCurrency:event?.quoteCurrency??null,
+          initialBuy:event?.initialBuy??null,initialTokensBought:event?.initialTokensBought??null,
+          metadataSchemaVersion:event?.metadataSchemaVersion??null,metadataDigest:event?.metadataDigest??null,
+          metadataURI:event?.metadataURI??null,blockNumber:event?.blockNumber??null,blockHash:event?.blockHash??null,
+          transactionHash:event?.transactionHash??null,logIndex:event?.logIndex??null,
+          launchTimestamp:launchTimestamp===null?null:launchTimestamp.toString(),
+          name,symbol,decimals:decimals===null?null:Number(decimals),transfersUnlocked,graduated,complete,
+          stateReadAtBlock:safeHead.toString(),
+        });
+      }catch(error){
+        console.warn("Could not inspect latest launch",factory.generation,launchId.toString(),String(error));
+      }
+      await new Promise(resolve=>setTimeout(resolve,75));
+    }
   }
+  const tokens=[...tokenRecords.values()].sort((a,b)=>{
+    if(a.launchTimestamp&&b.launchTimestamp)return Number(BigInt(b.launchTimestamp)-BigInt(a.launchTimestamp));
+    if(a.blockNumber!==null&&b.blockNumber!==null)return b.blockNumber-a.blockNumber;
+    return 0;
+  });
   const registry={
-    schemaVersion:1,chainId:CHAIN_ID,source:"Robinhood Chain Testnet factory event logs",
+    schemaVersion:1,chainId:CHAIN_ID,source:"Robinhood Chain Testnet factory curveAt reads cross-checked against token/curve getters and launch event logs",
     generatedAt:new Date().toISOString(),headBlock:head.toString(),safeHeadBlock:safeHead.toString(),
-    coverage:fullHistory?"configured_factories_full_history":isFirstRun?"configured_factories_recent_window":"configured_factories_incremental",
+    coverage:fullHistory?"configured_factories_full_history":isFirstRun?"configured_factories_recent_window_plus_latest_launches":"configured_factories_incremental_plus_latest_launches",
     warning:"Only three configured factory generations are scanned; unknown/new factories may be missing. Current token/curve getter reads are snapshots at stateReadAtBlock, not historical facts. This file is discovery data only and is never settlement authority.",
-    factories:factoryChecks,totalTokens:launches.length,tokens,
+    factories:factoryChecks,totalTokens:tokens.length,totalLaunches:factoryChecks.reduce((sum,item)=>sum+Number(item.onChainLaunchCount),0),tokens,
   };
   await mkdir(dirname(outputPath),{recursive:true});
   await writeFile(outputPath,JSON.stringify(registry,null,2)+"\n","utf8");
   const counts=Object.fromEntries(FACTORIES.map(f=>[f.generation,launches.filter(x=>x.generation===f.generation).length]));
-  console.log(JSON.stringify({chainId:CHAIN_ID,head:safeNumber(head),safeHead:safeNumber(safeHead),from:safeNumber(from),launches:launches.length,byGeneration:counts,output:outputPath,coverage:registry.coverage},null,2));
+  console.log(JSON.stringify({chainId:CHAIN_ID,head:safeNumber(head),safeHead:safeNumber(safeHead),from:safeNumber(from),launchEventsInWindow:launches.length,latestTokens:tokens.length,totalFactoryLaunches:registry.totalLaunches,factoryLaunchCounts:factoryChecks.map(item=>({generation:item.generation,count:item.onChainLaunchCount})),byGeneration:counts,output:outputPath,coverage:registry.coverage},null,2));
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
