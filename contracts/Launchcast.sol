@@ -260,21 +260,31 @@ contract Launchcast {
 
     /// @dev Launchcast supports exact-transfer, non-rebasing ERC-20 tokens only.
     function _safeTransfer(address token, address to, uint256 amount) internal {
+        uint256 senderBefore = _balanceOf(token, address(this));
         uint256 recipientBefore = _balanceOf(token, to);
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(IERC20Launchcast.transfer.selector, to, amount));
         if (!success || (data.length != 0 && !abi.decode(data, (bool)))) revert TransferFailed();
+        uint256 senderAfter = _balanceOf(token, address(this));
         uint256 recipientAfter = _balanceOf(token, to);
-        if (recipientAfter < recipientBefore || recipientAfter - recipientBefore != amount) revert TransferFailed();
+        if (
+            senderAfter > senderBefore || senderBefore - senderAfter != amount ||
+            recipientAfter < recipientBefore || recipientAfter - recipientBefore != amount
+        ) revert TransferFailed();
     }
 
     function _safeTransferFrom(address token, address from, address to, uint256 amount) internal {
-        uint256 contractBefore = _balanceOf(token, to);
+        uint256 senderBefore = _balanceOf(token, from);
+        uint256 recipientBefore = _balanceOf(token, to);
         (bool success, bytes memory data) = token.call(
             abi.encodeWithSelector(IERC20Launchcast.transferFrom.selector, from, to, amount)
         );
         if (!success || (data.length != 0 && !abi.decode(data, (bool)))) revert TransferFailed();
-        uint256 contractAfter = _balanceOf(token, to);
-        if (contractAfter < contractBefore || contractAfter - contractBefore != amount) revert TransferFailed();
+        uint256 senderAfter = _balanceOf(token, from);
+        uint256 recipientAfter = _balanceOf(token, to);
+        if (
+            senderAfter > senderBefore || senderBefore - senderAfter != amount ||
+            recipientAfter < recipientBefore || recipientAfter - recipientBefore != amount
+        ) revert TransferFailed();
     }
 
     function _balanceOf(address token, address account) internal view returns (uint256 balance) {
