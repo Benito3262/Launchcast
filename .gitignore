@@ -6,3 +6,6 @@ lib/
 .env.*
 !.env.example
 .DS_Store
+
+# Local discovery snapshots
+services/discovery/data/
