@@ -133,13 +133,13 @@ export default function App() {
   }catch(e){setError(e instanceof Error?e.message:"Wallet connection failed.");}
  }
 
- async function transact(label:string,action:(client:WalletClient,user:Address)=>Promise<Hex>){
-  if(!wallet||!account){setError("Connect your wallet first.");return;}
+ async function transact(label:string,action:(client:WalletClient,user:Address)=>Promise<Hex>):Promise<boolean>{
+  if(!wallet||!account){setError("Connect your wallet first.");return false;}
   setBusy(label);setError("");setNotice("");
   try{
    const hash=await action(wallet,account);setNotice(label+": transaction sent. Waiting for confirmation…");
-   await publicClient.waitForTransactionReceipt({hash});setNotice(label+": confirmed on Robinhood Chain Testnet.");await refresh();
-  }catch(e){setError(e instanceof Error?e.message:label+" failed.");}
+   await publicClient.waitForTransactionReceipt({hash});setNotice(label+": confirmed on Robinhood Chain Testnet.");await refresh();return true;
+  }catch(e){setError(e instanceof Error?e.message:label+" failed.");return false;}
   finally{setBusy("");}
  }
 
@@ -171,8 +171,8 @@ export default function App() {
    if(curveToken.toLowerCase()!==tokenAddress.toLowerCase()||tokenCurve.toLowerCase()!==curveAddress.toLowerCase())throw new Error("The token and curve contracts do not point to each other. Market creation blocked.");
    if(graduated)throw new Error("This curve is already graduated. Choose an ungraduated VibeVibe launch.");
   }catch(e){setError(e instanceof Error?e.message:"Could not verify this VibeVibe curve on-chain.");return;}
-  await transact("Create market",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"createMarket",args:[getAddress(curve),BigInt(ts)]}));
-  setCurve("");setDeadline("");
+  const created=await transact("Create market",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"createMarket",args:[getAddress(curve),BigInt(ts)]}));
+  if(created){setCurve("");setDeadline("");}
  }
 
  return <div className="app-shell">
