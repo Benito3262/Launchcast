@@ -76,7 +76,7 @@ jobs:
             stakeTokenAddress: testUSD.contractAddress,
             deployedAt: new Date().toISOString()
           };
-          fs.writeFileSync('web/public/data/deployment.json', JSON.stringify(config, null, 2) + '\\n');
+          fs.writeFileSync('web/public/data/deployment.json', JSON.stringify(config, null, 2) + '\n');
           const lines = [
             '## Launchcast testnet deployment',
             '',
@@ -89,7 +89,7 @@ jobs:
             '',
             'The public deployment config has been written to web/public/data/deployment.json. Never share your private key.'
           ];
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\\n') + '\\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
           NODE
 
       - name: Publish public deployment addresses
