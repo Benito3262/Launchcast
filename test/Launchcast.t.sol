@@ -244,6 +244,64 @@ contract LaunchcastTest {
         new Launchcast(address(0x1234), FEE_RECIPIENT, 500);
     }
 
+
+    function testClaimCannotBeRepeated() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 100 * 10 ** 6);
+        _bet(BOB, marketId, false, 100 * 10 ** 6);
+        curve.setGraduated(true);
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+
+        vm.prank(ALICE);
+        launchcast.claim(marketId);
+        vm.expectRevert(Launchcast.AlreadyClaimed.selector);
+        vm.prank(ALICE);
+        launchcast.claim(marketId);
+    }
+
+    function testUserWithPositionsOnBothSidesReceivesNetPayout() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 100 * 10 ** 6);
+        _bet(ALICE, marketId, false, 40 * 10 ** 6);
+        _bet(BOB, marketId, false, 100 * 10 ** 6);
+        curve.setGraduated(true);
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+
+        vm.prank(ALICE);
+        uint256 payout = launchcast.claim(marketId);
+        // YES stake wins its share of the losing pool; ALICE's NO stake is part of that pool.
+        require(payout == 157 * 10 ** 6, "incorrect netted payout");
+    }
+
+    function testBatchSettlementWorksAndRejectsOversizedBatch() public {
+        uint256 first = _createMarket();
+        uint256 second = _createMarket();
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = first;
+        ids[1] = second;
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarkets(ids);
+        require(launchcast.getMarket(first).resolved, "first market unresolved");
+        require(launchcast.getMarket(second).resolved, "second market unresolved");
+
+        uint256[] memory tooMany = new uint256[](26);
+        vm.expectRevert(Launchcast.InvalidBatch.selector);
+        launchcast.settleMarkets(tooMany);
+    }
+
+    function testBatchSettlementRevertsAtomicallyOnDuplicateMarket() public {
+        uint256 marketId = _createMarket();
+        uint256[] memory ids = new uint256[](2);
+        ids[0] = marketId;
+        ids[1] = marketId;
+        vm.warp(block.timestamp + 2 days);
+        vm.expectRevert(Launchcast.AlreadyResolved.selector);
+        launchcast.settleMarkets(ids);
+        require(!launchcast.getMarket(marketId).resolved, "partial batch settlement");
+    }
+
     function testCannotSettleBeforeResolveAfter() public {
         uint256 marketId = _createMarket();
         vm.expectRevert();
