@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: web
+        working-directory: services/discovery
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -22,7 +22,7 @@ jobs:
       - name: Restore discovery checkpoint
         uses: actions/cache@v4
         with:
-          path: web/.cache/vibevibe-discovery.json
+          path: services/discovery/data/checkpoint.json
           key: vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
           restore-keys: |
             vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-
