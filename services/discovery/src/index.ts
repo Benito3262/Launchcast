@@ -212,6 +212,18 @@ async function main(){
   if(network!==CHAIN_ID)throw new Error("Wrong network: expected Robinhood Chain Testnet (46630), received "+network+".");
   const head=await client.getBlockNumber();
   const safeHead=head>BigInt(confirmations)?head-BigInt(confirmations):0n;
+  if (process.argv.includes("--v6-only")) {
+    if (process.env.ENABLE_V6_DISCOVERY !== "true") throw new Error("V6-only discovery requires ENABLE_V6_DISCOVERY=true.");
+    const v6 = await discoverV6Tokens(safeHead, latestPerFactory);
+    const v6Output = resolve(process.cwd(), "../../web/public/data/vibevibe-v6-tokens.json");
+    await mkdir(dirname(v6Output), { recursive: true });
+    await writeFile(v6Output, JSON.stringify(v6, null, 2) + "\\n", "utf8");
+    console.log("V6-only discovery:", JSON.stringify({
+      status: v6.status, factory: V6_FACTORY, launchCount: v6.factoryLaunchCount,
+      records: v6.totalTokens, diagnostics: v6.diagnostics, readAtBlock: v6.readAtBlock, output: v6Output,
+    }));
+    return;
+  }
   const snapshot=await readSnapshot();
   const earliest=BigInt(Math.min(...FACTORIES.map(f=>f.deploymentBlock)));
   const isFirstRun=snapshot.updatedAt===new Date(0).toISOString();
