@@ -22,4 +22,5 @@ jobs:
         with:
           node-version: 20
       - run: npm install
+      - run: node --check scripts/discover-vibevibe.mjs
       - run: npm run build
