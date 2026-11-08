@@ -72,6 +72,33 @@ The VibeVibe testnet interface is https://testnet.vibevibe.fun/ and official lin
 
 The community indexer notes that the API is for cross-checking rather than a source of truth. Respect the service terms and rate limits; do not scrape or overload the API to construct a competing dataset.
 
+
+## Expanded factory registry warning (October 8, 2026 snapshot)
+
+A later community dashboard snapshot dated October 8, 2026 reports **six** configured factory generations, rather than the three listed in the indexer repository's current `config/factories.ts`:
+
+| Generation | Factory address fragment | Deployment block | Launches in snapshot | Economics |
+|---|---|---:|---:|---|
+| Prerelease 1 | `0x701d1647…bc913a47` | 91,564,496 | 1 | Not verified |
+| Prerelease 2 | `0x5b526cce…65c286f1` | 91,689,715 | 1 | Not verified |
+| Prerelease 3 | `0x3e7a734b…3f311215` | 92,284,200 | 5 | Not verified |
+| Retired | `0x4febc267…bed091df` | 95,916,239 | 14,816 | 100 bps; 50/50 |
+| Legacy | `0xb5b7a2f6…26339eb9` | 108,435,450 | 46,456 | 125 bps; 75/25 |
+| Current | `0x40f1be6f…5fb2df59` | 115,025,604 | 143,285 | 125 bps; 75/25 |
+
+The snapshot reports 204,564 launches through block 130,996,141. The three prerelease registries add seven historical launches. It explicitly says the prerelease fee models and graduation targets are unverified.
+
+**Important source discrepancy:** the linked indexer repository's `config/factories.ts` still declares only the original three generation types and addresses, while its separately published October 8 dashboard snapshot reports six. The dashboard abbreviates the three prerelease addresses, so these fragments are not valid deployment configuration. Do not copy them into Launchcast or assume the current indexer source has been updated to match the snapshot.
+
+Before Launchcast discovery supports these prerelease factories, obtain their complete addresses from a reproducible source, verify deployed bytecode and creation blocks on Robinhood Chain Testnet, inspect launch-event topics and live `graduated()` behavior, and confirm each factory's curve relationship. Do not infer fee or graduation parameters from another generation.
+
+Official Robinhood developer documentation independently confirms testnet chain ID 46630 and the public RPC/explorer endpoints: https://docs.robinhood.com/chain/add-network-to-wallet/. The public RPC is rate-limited, so it is suitable for controlled testnet verification, not an assumption of production-grade indexing.
+
+Sources checked November 8, 2026:
+- Community snapshot: https://vibevibe-testnet-dashboard.vercel.app/
+- Community indexer source: https://github.com/itstorvian/vibevibe-testnet-indexer
+- Official network configuration: https://docs.robinhood.com/chain/add-network-to-wallet/
+
 ## Implementation rule
 
 The indexer is for token discovery, historical activity, and frontend presentation. Launchcast settlement must verify the relevant VibeVibe contract state directly on-chain, using independently validated interfaces and narrowly defined market predicates.
