@@ -331,6 +331,47 @@ contract LaunchcastTest {
         launchcast.setFeeConfig(100, FEE_RECIPIENT);
     }
 
+
+    function testRejectsBetAbovePoolTypeLimit() public {
+        uint256 marketId = _createMarket();
+        vm.expectRevert(Launchcast.InvalidAmount.selector);
+        vm.prank(ALICE);
+        launchcast.placeBet(marketId, true, uint256(type(uint128).max) + 1);
+    }
+
+    function testRejectsBetOnUnknownMarket() public {
+        vm.expectRevert(Launchcast.InvalidMarket.selector);
+        vm.prank(ALICE);
+        launchcast.placeBet(999, true, 1);
+    }
+
+    function testClaimBeforeResolutionReverts() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 10);
+        vm.expectRevert(Launchcast.NotResolved.selector);
+        vm.prank(ALICE);
+        launchcast.claim(marketId);
+    }
+
+    function testUserWithoutPositionCannotClaim() public {
+        uint256 marketId = _createMarket();
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+        vm.expectRevert(Launchcast.NothingToClaim.selector);
+        vm.prank(ALICE);
+        launchcast.claim(marketId);
+    }
+
+    function testRejectsMarketWithPastOrCurrentResolveTime() public {
+        vm.expectRevert(Launchcast.InvalidTime.selector);
+        launchcast.createMarket(address(curve), uint64(block.timestamp));
+    }
+
+    function testRejectsZeroFeeRecipient() public {
+        vm.expectRevert(Launchcast.InvalidAddress.selector);
+        launchcast.setFeeConfig(100, address(0));
+    }
+
     function testCannotSettleBeforeResolveAfter() public {
         uint256 marketId = _createMarket();
         vm.expectRevert();
