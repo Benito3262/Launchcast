@@ -31,14 +31,15 @@ To run it locally:
 ```bash
 cd web
 cp .env.example .env
-# Set VITE_LAUNCHCAST_ADDRESS after the Launchcast contract is deployed.
 npm install
 npm run dev
 ```
 
+After the gated deployment workflow succeeds, it publishes `web/public/data/deployment.json` with the Launchcast and TestUSD addresses. The frontend loads that public config automatically; `VITE_LAUNCHCAST_ADDRESS` remains available as an optional local override.
+
 The web build is checked by `.github/workflows/web.yml`. No frontend deployment or contract deployment has been performed.
 
-A manually gated GitHub Actions workflow is prepared at **Actions → Deploy Launchcast to Robinhood Testnet**. Before using it, add repository secrets named `LAUNCHCAST_TESTNET_PRIVATE_KEY` (a dedicated testnet-only wallet key) and `LAUNCHCAST_FEE_RECIPIENT` (the address that should receive protocol fees). Fund the deployer with Robinhood testnet ETH. The workflow requires an explicit `yes` confirmation, checks chain ID 46630, validates the fee recipient and gas balance, reruns contract tests, and then deploys TestUSD and Launchcast. Never put a private key in a commit, issue, chat message, or workflow input. The workflow has been added but has not been executed.
+A manually gated GitHub Actions workflow is prepared at **Actions → Deploy Launchcast to Robinhood Testnet**. Before using it, add repository secrets named `LAUNCHCAST_TESTNET_PRIVATE_KEY` (a dedicated testnet-only wallet key) and `LAUNCHCAST_FEE_RECIPIENT` (the address that should receive protocol fees). Fund the deployer with Robinhood testnet ETH. The workflow requires an explicit `yes` confirmation, checks chain ID 46630, validates the fee recipient and gas balance, reruns contract tests, deploys TestUSD and Launchcast, then publishes the public contract addresses for the frontend. Never put a private key in a commit, issue, chat message, or workflow input. The workflow has been added but has not been executed.
 
 **Market wording:** the proposition is whether the curve's `graduated()` getter returns `true` when settlement is executed at or after `resolveAfter`. It does not establish whether the curve graduated before the deadline.
 
