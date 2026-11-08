@@ -36,7 +36,7 @@ type Launch = {
   initialBuy:string; initialTokensBought:string; metadataSchemaVersion:number; metadataDigest:string;
   metadataURI:string; blockNumber:number; blockHash:string; transactionHash:string; logIndex:number;
 };
-type Snapshot = { chainId:number; updatedAt:string; scannedThrough:number; checkpointHash:string; launches:Launch[] };
+type Snapshot = { chainId:number; updatedAt:string; scannedThrough:number; checkpointHash:string; fullHistoryCompleted?:boolean; launches:Launch[] };
 type RegistryToken = {
   chainId:number; generation:string; factory:Address; launchId:string; token:Address; curve:Address;
   creator:Address|null; creatorFeeRecipient:Address|null; creatorVault:Address|null; quoteCurrency:Address|null;
@@ -94,7 +94,7 @@ async function main(){
   const snapshot=await readSnapshot();
   const earliest=BigInt(Math.min(...FACTORIES.map(f=>f.deploymentBlock)));
   const isFirstRun=snapshot.updatedAt===new Date(0).toISOString();
-  const fullHistory=requestFullHistory && isFirstRun;
+  const fullHistory=requestFullHistory && snapshot.fullHistoryCompleted !== true;
   const from=fullHistory?earliest:isFirstRun?(safeHead>recentWindow?safeHead-recentWindow:earliest):BigInt(Math.max(Number(earliest),snapshot.scannedThrough-63));
   const factoryChecks:Array<{generation:string;address:Address;bytecodePresent:boolean;onChainLaunchCount:string;deploymentBlock:string}>=[];
   for(const factory of FACTORIES){
@@ -118,7 +118,7 @@ async function main(){
     }
   }
   const checkpoint=safeHead>0n?await client.getBlock({blockNumber:safeHead}):null;
-  const cache:Snapshot={chainId:CHAIN_ID,updatedAt:new Date().toISOString(),scannedThrough:safeNumber(safeHead),checkpointHash:checkpoint?.hash||"",launches};
+  const cache:Snapshot={chainId:CHAIN_ID,updatedAt:new Date().toISOString(),scannedThrough:safeNumber(safeHead),checkpointHash:checkpoint?.hash||"",fullHistoryCompleted:snapshot.fullHistoryCompleted===true||fullHistory,launches};
   await mkdir(dirname(cachePath),{recursive:true});
   await writeFile(cachePath,JSON.stringify(cache,null,2)+"\n","utf8");
 
