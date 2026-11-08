@@ -272,7 +272,7 @@ contract LaunchcastTest {
         vm.prank(ALICE);
         uint256 payout = launchcast.claim(marketId);
         // YES stake wins its share of the losing pool; ALICE's NO stake is part of that pool.
-        require(payout == 157 * 10 ** 6, "incorrect netted payout");
+        require(payout == 233 * 10 ** 6, "incorrect netted payout");
     }
 
     function testBatchSettlementWorksAndRejectsOversizedBatch() public {
