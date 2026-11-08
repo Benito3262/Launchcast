@@ -6,7 +6,8 @@
   "scripts": {
     "discover": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
-    "discover:full": "tsx src/index.ts --full-history"
+    "discover:full": "tsx src/index.ts --full-history",
+    "test": "tsx --test src/v6-helpers.test.ts"
   },
   "dependencies": {
     "viem": "^2.21.54"
