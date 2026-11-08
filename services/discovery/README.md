@@ -18,7 +18,7 @@ From this directory:
     npm install
     npm run discover
 
-The first run indexes a recent 100,000-block window per configured factory. Later runs resume from a local checkpoint and re-scan a 63-block overlap. To request full history:
+The first workflow pass runs a full-history scan from each configured factory's recorded deployment block. Later runs resume from a local checkpoint and re-scan a 63-block overlap. The completed-full-history flag is stored in the checkpoint so scheduled refreshes do not repeat the expensive historical scan. To request a deliberate full re-index, remove the local checkpoint/cache and run:
 
     npm run discover:full
 
