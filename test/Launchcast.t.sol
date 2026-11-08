@@ -108,6 +108,30 @@ contract LaunchcastTest {
         launchcast.createMarket(address(curve), uint64(block.timestamp + 1 days));
     }
 
+
+    function testFeeIsLockedWhenMarketSettles() public {
+        uint256 marketId = _createMarket();
+        _bet(ALICE, marketId, true, 100 * 10 ** 6);
+        _bet(BOB, marketId, false, 100 * 10 ** 6);
+
+        curve.setGraduated(true);
+        vm.warp(block.timestamp + 2 days);
+        launchcast.settleMarket(marketId);
+
+        // Changing the global fee later must not change an already-settled market's payout.
+        launchcast.setFeeConfig(1_000, address(0xFEE2));
+
+        vm.prank(ALICE);
+        uint256 payout = launchcast.claim(marketId);
+        require(payout == 195 * 10 ** 6, "settled fee changed");
+    }
+
+    function testCannotSettleBeforeResolveAfter() public {
+        uint256 marketId = _createMarket();
+        vm.expectRevert();
+        launchcast.settleMarket(marketId);
+    }
+
     function _createMarket() private returns (uint256) {
         return launchcast.createMarket(address(curve), uint64(block.timestamp + 1 days));
     }
