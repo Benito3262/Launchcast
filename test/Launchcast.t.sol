@@ -98,8 +98,14 @@ contract LaunchcastTest {
         uint256 marketId = _createMarket();
         vm.warp(block.timestamp + 2 days);
 
-        vm.expectRevert();
-        _bet(ALICE, marketId, true, 1 * 10 ** 6);
+        // Approve before expectRevert: the expected revert must apply to placeBet,
+        // not to the ERC-20 approval performed by _bet().
+        vm.prank(ALICE);
+        token.approve(address(launchcast), 1 * 10 ** 6);
+
+        vm.expectRevert(Launchcast.MarketClosed.selector);
+        vm.prank(ALICE);
+        launchcast.placeBet(marketId, true, 1 * 10 ** 6);
     }
 
     function testOnlyOwnerCanCreateMarket() public {
