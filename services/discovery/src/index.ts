@@ -180,7 +180,7 @@ async function main(){
     return 0;
   });
   const registry={
-    schemaVersion:1,chainId:CHAIN_ID,source:"Robinhood Chain Testnet factory curveAt reads cross-checked against token/curve getters and launch event logs",
+    schemaVersion:1,chainId:CHAIN_ID,source:"Robinhood Chain Testnet factory curveAt reads cross-checked against token/curve getters; recent launch event logs enrich records when available",
     generatedAt:new Date().toISOString(),headBlock:head.toString(),safeHeadBlock:safeHead.toString(),
     coverage:fullHistory?"configured_factories_full_history":isFirstRun?"configured_factories_recent_window_plus_latest_launches":"configured_factories_incremental_plus_latest_launches",
     warning:"Only three configured factory generations are scanned; unknown/new factories may be missing. Current token/curve getter reads are snapshots at stateReadAtBlock, not historical facts. This file is discovery data only and is never settlement authority.",
