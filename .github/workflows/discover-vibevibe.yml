@@ -2,6 +2,8 @@ name: Refresh VibeVibe token registry
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
 
 permissions:
   contents: write
@@ -11,12 +13,19 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/discovery
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: Restore discovery checkpoint
+        uses: actions/cache@v4
+        with:
+          path: web/.cache/vibevibe-discovery.json
+          key: vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}
+          restore-keys: |
+            vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-
       - run: npm install
       - run: npm run discover
       - name: Commit updated token registry
