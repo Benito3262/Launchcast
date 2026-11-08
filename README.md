@@ -37,9 +37,20 @@ npm run dev
 
 After the gated deployment workflow succeeds, it publishes `web/public/data/deployment.json` with the Launchcast and TestUSD addresses. The frontend loads that public config automatically; `VITE_LAUNCHCAST_ADDRESS` remains available as an optional local override.
 
-The web build is checked by `.github/workflows/web.yml`. No frontend deployment or contract deployment has been performed.
+The web build is checked by `.github/workflows/web.yml`. The frontend has not yet been deployed to a public hosting provider.
 
-A manually gated GitHub Actions workflow is prepared at **Actions → Deploy Launchcast to Robinhood Testnet**. Before using it, add repository secrets named `LAUNCHCAST_TESTNET_PRIVATE_KEY` (a dedicated testnet-only wallet key) and `LAUNCHCAST_FEE_RECIPIENT` (the address that should receive protocol fees). Fund the deployer with Robinhood testnet ETH. The workflow requires an explicit `yes` confirmation, checks chain ID 46630, validates the fee recipient and gas balance, reruns contract tests, deploys TestUSD and Launchcast, then publishes the public contract addresses for the frontend. Never put a private key in a commit, issue, chat message, or workflow input. The workflow has been added but has not been executed.
+### Current testnet deployment
+
+Launchcast and TestUSD were successfully deployed to Robinhood Chain Testnet (chain ID 46630) on 2026-11-08. The deployment workflow completed successfully on its second attempt, and the public deployment config is committed at `web/public/data/deployment.json`.
+
+- Launchcast: `0x091413de1302640f78d41e2370507c1a8f774c45`
+- TestUSD: `0x9557aade5c89fe39941b4f3a60cbac16e3f32143`
+- [Launchcast contract explorer](https://explorer.testnet.chain.robinhood.com/address/0x091413de1302640f78d41e2370507c1a8f774c45)
+- [TestUSD contract explorer](https://explorer.testnet.chain.robinhood.com/address/0x9557aade5c89fe39941b4f3a60cbac16e3f32143)
+
+The app includes wallet connection, live contract market reads, YES/NO staking, portfolio and claims, TestUSD faucet access, owner-only market creation, permissionless settlement, and owner fee controls. All transactions remain testnet-only. The public website still needs a hosting connection and end-to-end wallet testing.
+
+The manually gated workflow is retained for future testnet redeployments at **Actions → Deploy Launchcast to Robinhood Testnet**. It requires repository secrets `LAUNCHCAST_TESTNET_PRIVATE_KEY` (dedicated testnet-only wallet key) and `LAUNCHCAST_FEE_RECIPIENT`. Never put a private key in a commit, issue, chat message, or workflow input.
 
 **Market wording:** the proposition is whether the curve's `graduated()` getter returns `true` when settlement is executed at or after `resolveAfter`. It does not establish whether the curve graduated before the deadline.
 
