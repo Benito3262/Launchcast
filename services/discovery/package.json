@@ -10,7 +10,8 @@
     "test": "tsx --test src/*.test.ts",
     "discover:v6": "tsx src/index.ts --v6-only",
     "probe:curve-observation": "tsx src/probe-curve-observation.ts",
-    "probe:v4-observation": "tsx src/probe-v4-observation.ts"
+    "probe:v4-observation": "tsx src/probe-v4-observation.ts",
+    "reconstruct:v6-supply": "tsx src/reconstruct-v6-supply.ts"
   },
   "dependencies": {
     "viem": "^2.21.54"
