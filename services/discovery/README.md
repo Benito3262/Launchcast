@@ -18,12 +18,12 @@ From this directory:
     npm install
     npm run discover
 
-The first workflow pass runs a full-history scan from each configured factory's recorded deployment block. Later runs resume from a local checkpoint and re-scan a 63-block overlap. The completed-full-history flag is stored in the checkpoint so scheduled refreshes do not repeat the expensive historical scan. To request a deliberate full re-index, remove the local checkpoint/cache and run:
+The workflow uses a bounded recent event-log window on the first run, then resumes from a local checkpoint with a 63-block overlap. It also enumerates the latest 12 factory launch IDs per generation using `curveAt()` and cross-checks each curve/token pair. This is designed for the public RPC's response-size and rate limits; it is not a full historical event archive. A full-history scan remains available for controlled environments with a suitable RPC provider:
 
     npm run discover:full
 
-The local checkpoint is written to `data/checkpoint.json` (gitignored). The generated frontend registry is written to `../../web/public/data/vibevibe-tokens.json`. Only the 50 newest token launches are enriched with best-effort current-state getters. These reads are snapshots at the latest safe block, not historical data.
+The local checkpoint is written to `data/checkpoint.json` (gitignored). The generated frontend registry is written to `../../web/public/data/vibevibe-tokens.json`. Only the latest 12 token launches per configured factory are enriched with best-effort current-state getters. These reads are snapshots at the latest safe block, not historical data.
 
 A one-click GitHub workflow is available under **Actions → Refresh VibeVibe token registry → Run workflow**. It runs the indexer and commits the static registry to the repository.
 
-Keep RPC provider secrets in local environment variables; never commit them. The public Robinhood RPC is rate-limited, so a full-history scan may take a long time or require a dedicated archive/indexing provider.
+Keep RPC provider secrets in local environment variables; never commit them. The public Robinhood RPC is rate-limited and enforces response-size limits. Full-history indexing should use a dedicated archive/indexing provider and smaller adaptive ranges.
