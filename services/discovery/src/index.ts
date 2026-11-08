@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { createPublicClient, http, parseAbi, parseAbiItem, type Address } from "viem";
 import { CHAIN_ID, DEFAULT_RPC, FACTORIES } from "./config.js";
+import { hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange } from "./v6-helpers.js";
 
 const rpcUrl = process.env.RPC_URL || DEFAULT_RPC;
 const confirmations = Math.max(1, Number(process.env.CONFIRMATIONS || 32));
@@ -88,16 +89,16 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
   const launchCount = await client.readContract({
     address: V6_FACTORY, abi: v6FactoryReads, functionName: "launchCount", blockNumber: safeHead,
   });
-  const first = launchCount > BigInt(limit) ? launchCount - BigInt(limit) : 0n;
+  const { first, endExclusive } = latestLaunchRange(launchCount, limit);
   const tokens: Array<Record<string, unknown>> = [];
 
-  for (let launchId = first; launchId < launchCount; launchId++) {
+  for (let launchId = first; launchId < endExclusive; launchId++) {
     try {
       const token = await client.readContract({
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "tokenOfLaunch",
         args: [launchId], blockNumber: safeHead,
       });
-      if (token.toLowerCase() === "0x0000000000000000000000000000000000000000") continue;
+      if (isZeroAddress(token)) continue;
       const isV6Token = await client.readContract({
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "isV6Token",
         args: [token], blockNumber: safeHead,
@@ -108,7 +109,7 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "curveOf",
         args: [token], blockNumber: safeHead,
       });
-      if (curve.toLowerCase() === "0x0000000000000000000000000000000000000000") continue;
+      if (isZeroAddress(curve)) continue;
 
       const [curveCode, isV6Curve] = await Promise.all([
         client.getCode({ address: curve, blockNumber: safeHead }),
@@ -123,7 +124,7 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "token", blockNumber: safeHead }),
         client.readContract({ address: token, abi: v6TokenReads, functionName: "curve", blockNumber: safeHead }),
       ]);
-      if (curveToken.toLowerCase() !== token.toLowerCase() || tokenCurve.toLowerCase() !== curve.toLowerCase()) {
+      if (!hasMatchingTokenCurveLinks(token, curve, curveToken, tokenCurve)) {
         console.warn("V6 adapter skipped mismatched token/curve linkage:", launchId.toString());
         continue;
       }
