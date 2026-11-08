@@ -22,14 +22,15 @@ The chain does not execute a transaction automatically at the deadline. The mark
 - The fee is deducted from the losing pool only when both sides have stakes.
 - If nobody backed the winning outcome, all participants can reclaim their own stakes.
 - If the winning side has no opposing pool, winning participants receive their original stakes.
-- Fee amount is stored when a market settles, so later global fee changes do not rewrite that market's payout.
+- Fee amount and fee recipient are snapshotted when a market settles, so later global fee changes or recipient rotation do not rewrite that market's payout or redirect its accrued fee.
+- Accrued fees are tracked per snapshotted recipient. Each recipient can withdraw only the balance assigned to their own address; changing the current fee recipient does not transfer ownership of previously accrued fees.
 - Integer division can leave a small rounding remainder in the contract. A later audited version should include a documented dust-recovery policy that cannot affect user claims.
 
 ## Trust and control assumptions
 
 - Market creation is owner-only. The owner chooses the curve address and settlement timestamp; this is a meaningful trust assumption.
 - Settlement itself is permissionless and reads the VibeVibe contract directly.
-- The fee configuration and fee recipient are owner-controlled. The initial deployment sets the fee to 0 bps; fee policy must be disclosed before any non-zero fee is enabled.
+- The fee rate and future fee recipient are owner-controlled. The initial deployment sets the fee to 0 bps; fee policy must be disclosed before any non-zero fee is enabled. A recipient can withdraw only fees already allocated to its own address.
 - The current implementation has no user cancellation or early refund path.
 - This implementation does not include a market question/title field on-chain. The frontend must show a precise, human-readable description tied to the curve address and the exact settlement predicate.
 
@@ -49,5 +50,5 @@ The live VibeVibe ABI, deployed curve implementation, and exact meaning of `grad
 - [ ] Verify factory-generation coverage and curve address provenance.
 - [ ] Test fee, rounding, empty-side refund, and multiple-user payout cases.
 - [ ] Test with a dedicated wallet and test tokens only.
-- [ ] Confirm deployment chain ID is 46630 before broadcasting.
+- [ ] Confirm deployment chain ID is 46630 before broadcasting (the deployment script now enforces this).
 - [ ] Verify deployed bytecode and addresses in the Robinhood testnet explorer.
