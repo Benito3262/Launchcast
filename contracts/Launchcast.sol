@@ -2,6 +2,9 @@
 pragma solidity ^0.8.24;
 
 /// @notice Minimal ERC-20 interface used by Launchcast.
+interface IVibeVibeCurveIdentity { function token() external view returns (address); }
+interface IVibeVibeTokenIdentity { function curve() external view returns (address); }
+
 interface IERC20Launchcast {
     function transfer(address to, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
@@ -99,7 +102,8 @@ contract Launchcast {
     function createMarket(address curve, uint64 resolveAfter) external onlyOwner returns (uint256 marketId) {
         if (curve == address(0) || curve.code.length == 0) revert InvalidCurve();
         if (resolveAfter <= block.timestamp) revert InvalidTime();
-        _readGraduated(curve); // Validate the expected getter exists and returns a bool.
+        if (_readGraduated(curve)) revert InvalidCurve(); // Markets start from a live, ungraduated curve.
+        _validateVibeVibePair(curve);
 
         marketId = ++marketCount;
         markets[marketId] = Market({
@@ -245,6 +249,21 @@ contract Launchcast {
 
     function _feeFor(uint256 marketId) internal view returns (uint256) {
         return marketFee[marketId];
+    }
+
+    function _validateVibeVibePair(address curve) internal view {
+        (bool curveOk, bytes memory curveData) = curve.staticcall(
+            abi.encodeWithSelector(IVibeVibeCurveIdentity.token.selector)
+        );
+        if (!curveOk || curveData.length < 32) revert InvalidCurve();
+        address tokenAddress = abi.decode(curveData, (address));
+        if (tokenAddress == address(0) || tokenAddress.code.length == 0) revert InvalidCurve();
+
+        (bool tokenOk, bytes memory tokenData) = tokenAddress.staticcall(
+            abi.encodeWithSelector(IVibeVibeTokenIdentity.curve.selector)
+        );
+        if (!tokenOk || tokenData.length < 32) revert InvalidCurve();
+        if (abi.decode(tokenData, (address)) != curve) revert InvalidCurve();
     }
 
     function _readGraduated(address curve) internal view returns (bool graduated_) {
