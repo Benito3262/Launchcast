@@ -53,7 +53,7 @@ npm run discover
 
 Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow runs the indexer and commits the refreshed static registry.
 
-A local `npm run discover` scans a recent 100,000-block event window, then resumes from its saved cursor with a reorg overlap. The GitHub Actions workflow performs a full-history scan and launch-ID/count audit on its first successful run, then uses incremental six-hour refreshes. Every run also enumerates the latest 12 factory launch IDs per configured factory so recent token cards are populated even when the event window is quiet. The full-history run records whether decoded event counts match each factory’s on-chain `launchCount()`; mismatches are surfaced in the registry instead of hiding the independently verified `curveAt()` token records. To request it locally, run `npm run discover:full` from `services/discovery/`.
+A local `npm run discover` scans a recent 100,000-block event window, then resumes from its saved cursor with a reorg overlap. The GitHub Actions workflow scans a bounded recent event window and refreshes incrementally every six hours. Every run also enumerates the latest 12 factory launch IDs per configured factory using `curveAt()`, then verifies reciprocal `curve.token()` and `token.curve()` getters. This produces 36 recent token records across the three configured factories. The registry records each factory's on-chain `launchCount()` as context; those counters are not proof that every historical event was indexed. To request it locally, run `npm run discover:full` from `services/discovery/`.
 
 The local checkpoint is written to `services/discovery/data/checkpoint.json`; the generated registry is `web/public/data/vibevibe-tokens.json`. The frontend reads that registry for its recent-launch panel. It does not use discovery data as settlement authority.
 
@@ -61,7 +61,7 @@ The local checkpoint is written to `services/discovery/data/checkpoint.json`; th
 
 ## Contract implementation status
 
-The initial Solidity implementation is in the repository:
+The current Solidity implementation is in the repository:
 
 - `contracts/Launchcast.sol`: pooled YES/NO market creation, ERC-20 escrow, permissionless settlement, proportional claims, and per-recipient fee accounting.
 - `contracts/TestUSD.sol`: faucet-only test token with no monetary value.
