@@ -26,6 +26,27 @@ Network details and contract addresses must be revalidated before deployment.
 
 The MVP will include wallet connection, eligible markets, YES/NO positions, a portfolio, settlement/claim flows, a leaderboard and guild view, plus an admin settlement dashboard.
 
-## Development status
+## Contract implementation status
 
-Documentation and research are being established before contract implementation. No contracts are deployed yet.
+The initial Solidity implementation is in the repository:
+
+- `contracts/Launchcast.sol`: pooled YES/NO market creation, ERC-20 escrow, permissionless settlement, proportional claims, and fee accounting.
+- `contracts/TestUSD.sol`: faucet-only test token with no monetary value.
+- `script/Deploy.s.sol`: Foundry deployment script.
+- `test/Launchcast.t.sol`: initial unit tests.
+- `foundry.toml`: compiler and project configuration.
+
+No contracts have been deployed. The Solidity code and tests still require a local Foundry compile/test run and an independent security review before deployment. The VibeVibe getter ABI and semantics also require live testnet verification before any real VibeVibe markets are created.
+
+## Local contract checks
+
+Install Foundry, then run:
+
+```bash
+forge build
+forge test -vv
+```
+
+Copy `.env.example` to `.env` only on your local machine. Never commit a real private key or seed phrase. Use a dedicated testnet wallet and obtain test ETH from the official faucet for gas.
+
+See [contract design and limitations](docs/contract-design.md) before interacting with the contracts.
