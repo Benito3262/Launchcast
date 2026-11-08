@@ -117,6 +117,31 @@ The output field `fdvPairScaled1e18` is denominated in the launch's pair currenc
 
 The adapter does not infer USD values from a browser API, token symbol, or assumed peg. USD thresholds require a separately verified quote-asset/USD source.
 
+## Historical observation proof of concept
+
+The discovery service now includes:
+
+- `findBlockAtOrBeforeTimestamp()`: binary-searches for the highest block whose timestamp is less than or equal to the target.
+- `npm run probe:v4-observation -- <target-unix-timestamp> <token-address> [max-staleness-seconds]`: reads the graduated token's V4 `Initialize` and `Swap` events and selects the latest price-changing event at or before the target block.
+- `npm run probe:curve-observation -- <target-unix-timestamp> <curve-address> [pair-input-base-units]`: checks whether the configured RPC can read curve state at a historical observation block.
+
+A live test against graduated token `0x05a4813cd56666c80548a99f9102a0cf7d21cc73` used target timestamp 1794131000:
+
+- The block selector returned block 150382703, whose timestamp exactly matched the target.
+- The selected price event was a PoolManager `Swap` at block 150381952, 137 seconds before the target.
+- The event-derived `sqrtPriceX96` differed from the current PoolManager state, confirming the probe did not substitute the later current price.
+- The resulting FDV was pair-denominated in `VIBEVIBEFINAL`; it was not converted to USD.
+
+This is a deterministic historical price-selection method for graduated V4 pools: use the last `Swap` event at or before the target block, or the `Initialize` event if no swap has occurred. A maximum event age must be enforced; otherwise a pool with no recent trading could produce a stale observation.
+
+The public testnet RPC can return historical block headers and event logs, but it did not support a historical `eth_call` for a curve state 12 hours earlier. A curve observation probe against a curve that already existed at the target block failed with a historical-state-unavailable error. Curve-phase observations therefore need an archive-capable RPC or a verified event ABI and a separately specified event-price calculation.
+
+The current active curve contract is not ABI-verified by the Robinhood explorer, and the event topics observed on it do not match the older community `CurveBuy`/`CurveSell` signatures. Do not reconstruct curve prices from the older community event definitions.
+
+For a safe first FDV-market scope, consider requiring a token to have graduated before the market is created, then use V4 event history only. That would exclude curve-stage tokens from 12h/24h FDV markets until their historical observation path is verified.
+
+The V4 event probe is still a research tool, not a settlement oracle. A V2 market contract would need an explicit resolver-attestation design (including target timestamp, observation block, pool ID, event transaction/log, price, supply and calculation) or another independently verifiable proof mechanism. The trust assumption and dispute process must be disclosed before stakes are accepted.
+
 ## USD oracle research (not integrated)
 
 Robinhood's official ecosystem documentation lists Chainlink as an oracle partner, but the Chainlink Data Streams verifier documentation currently lists a Robinhood Chain mainnet verifier, not a testnet verifier. Do not assume that the mainnet verifier can be used on chain ID 46630.
