@@ -81,7 +81,7 @@ contract Launchcast {
     }
 
     constructor(address stakeToken_, address feeRecipient_, uint16 feeBps_) {
-        if (stakeToken_ == address(0) || feeRecipient_ == address(0)) revert InvalidAddress();
+        if (stakeToken_ == address(0) || feeRecipient_ == address(0) || feeRecipient_ == address(this)) revert InvalidAddress();
         if (stakeToken_.code.length == 0) revert InvalidToken();
         if (feeBps_ > MAX_FEE_BPS) revert InvalidFee();
 
@@ -230,7 +230,7 @@ contract Launchcast {
 
         uint256 winningPool = outcomeYes ? market.yesPool : market.noPool;
         uint256 losingPool = outcomeYes ? market.noPool : market.yesPool;
-        uint256 fee;
+        uint256 fee = 0;
         if (winningPool != 0 && losingPool != 0) {
             fee = (losingPool * feeBps) / 10_000;
             marketFee[marketId] = fee;
