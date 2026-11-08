@@ -168,3 +168,19 @@ Until those are resolved, do not create or accept stakes on 12h/24h FDV markets.
 Robinhood's [official connection guide](https://docs.robinhood.com/chain/connecting/) identifies the public testnet RPC as rate-limited and recommends provider infrastructure such as Alchemy for reliable reads and archive access. The discovery service keeps `RPC_URL` configurable and uses the public endpoint by default. For sustained indexing or historical observation work, configure a dedicated provider endpoint through the environment; never put provider keys in source control or chat.
 
 The V6 adapter is opt-in and read-only. It does not create markets, settle markets, or make transactions.
+
+## Recommended first V2 scope (not implemented)
+
+To keep the first FDV markets resolvable with the evidence currently available:
+
+- Leave the deployed V1 contract and all existing markets untouched.
+- Keep graduation prediction as the curve-stage market.
+- Initially allow 12h/24h FDV markets only for V6 tokens that have already graduated and have a readable V4 pool key.
+- Denominate each FDV threshold in that token's pair currency. Do not label it USD market cap.
+- At the target time, select the last PoolManager `Swap` event at or before the canonical target block, falling back to `Initialize` if no swap has occurred.
+- Require the price event to be no older than a market-configured staleness limit. If the pool is stale, missing, or not initialized by the target time, void/refund rather than substituting a later price.
+- Require total supply at the target block. The public RPC currently cannot provide that historical state, so an archive-capable `RPC_URL` is needed unless supply immutability is independently established from verified source.
+- Resolve through a disclosed authorized signer quorum that attests to the target block, block hash, pool ID, event transaction/log index, `sqrtPriceX96`, pair decimals, total supply, and computed FDV. The contract must verify the attestation and expose all fields for inspection. This introduces an explicit oracle trust assumption; an alternative proof mechanism would be preferable if practical.
+- Add a challenge/refund path for missing, stale, inconsistent, or disputed observations.
+
+This is a proposed safety-first scope, not deployed code. The V6 contracts' source is not currently verified on the explorer, the USD feed is not approved, and historical supply reads are unavailable on the public RPC. Do not deploy V2 or accept stakes until those gates are addressed.
