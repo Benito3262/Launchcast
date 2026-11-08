@@ -184,3 +184,10 @@ To keep the first FDV markets resolvable with the evidence currently available:
 - Add a challenge/refund path for missing, stale, inconsistent, or disputed observations.
 
 This is a proposed safety-first scope, not deployed code. The V6 contracts' source is not currently verified on the explorer, the USD feed is not approved, and historical supply reads are unavailable on the public RPC. Do not deploy V2 or accept stakes until those gates are addressed.
+
+
+## Historical FDV diagnostic gate
+
+The V4 observation probe now emits the observation block hash and source-event block hash alongside the selected event transaction/log. It also evaluates a local, read-only FDV eligibility gate. The gate rejects non-positive prices, missing or non-positive historical supply, future-dated events, and events older than the configured staleness limit. Its result is diagnostic only; it is not an oracle attestation and cannot authorize contract settlement.
+
+A repeat probe at target timestamp `1794131000` selected observation block `150382703` and a V4 Swap at block `150381952` (137 seconds before the target). The event-derived price differed from the current PoolManager state, and the RPC could not read historical `totalSupply()` at the observation block. The diagnostic therefore returned `eligible: false` with `historical_supply_unavailable`, and FDV remained omitted. This confirms that the current public RPC path is still insufficient for FDV market settlement.

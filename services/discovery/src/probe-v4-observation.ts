@@ -1,6 +1,6 @@
 import { createPublicClient, encodeAbiParameters, http, keccak256, parseAbi, parseAbiItem, type Address } from "viem";
 import { CHAIN_ID, DEFAULT_RPC } from "./config.js";
-import { findBlockAtOrBeforeTimestamp, selectLatestV4PriceEvent, type V4PriceEventCandidate } from "./observation.js";
+import { evaluateFdvEligibility, findBlockAtOrBeforeTimestamp, selectLatestV4PriceEvent, type V4PriceEventCandidate } from "./observation.js";
 import { fdvPairScaled1e18, sqrtPriceFromPoolStateWord, v4PriceScaled1e18 } from "./v6-helpers.js";
 
 const [targetArg, tokenArg, maxStalenessArg] = process.argv.slice(2);
@@ -141,6 +141,13 @@ async function main() {
   } catch {
     // Do not substitute current supply into a historical FDV calculation.
   }
+  const fdvEligibility = evaluateFdvEligibility({
+    pricePairScaled1e18: price,
+    totalSupplyAtObservation,
+    priceEventAgeSeconds: ageSeconds,
+    maxStalenessSeconds,
+  });
+  const observationBlock = await client.getBlock({ blockNumber: observation.blockNumber });
   const poolStateSlot = keccak256(encodeAbiParameters(
     [{ type: "bytes32" }, { type: "uint256" }], [poolId, 6n],
   ));
@@ -158,15 +165,18 @@ async function main() {
     targetTimestamp: targetTimestamp.toString(),
     observationBlock: observation.blockNumber.toString(),
     observationBlockTimestamp: observation.timestamp.toString(),
+    observationBlockHash: observationBlock.hash,
     poolId,
     sourceEvent: selected.source,
     sourceEventBlock: selected.blockNumber.toString(),
     sourceEventTimestamp: eventBlock.timestamp.toString(),
+    sourceEventBlockHash: eventBlock.hash,
     sourceEventLogIndex: selected.logIndex,
     sourceEventTransaction: selected.transactionHash,
     secondsSinceLastPriceEventAtTarget: ageSeconds.toString(),
     maxStalenessSeconds: maxStalenessSeconds.toString(),
     status: ageSeconds <= maxStalenessSeconds ? "fresh" : "stale",
+    fdvEligibility,
     sqrtPriceX96: selected.sqrtPriceX96.toString(),
     liveStateSqrtPrice,
     matchesCurrentPoolState: liveStateSqrtPrice === null ? null : liveStateSqrtPrice === selected.sqrtPriceX96.toString(),

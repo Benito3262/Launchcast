@@ -70,3 +70,26 @@ export function selectLatestV4PriceEvent(
   });
   return eligible.at(-1) ?? null;
 }
+
+
+export type FdvEligibilityInput = {
+  pricePairScaled1e18: bigint;
+  totalSupplyAtObservation: bigint | null;
+  priceEventAgeSeconds: bigint;
+  maxStalenessSeconds: bigint;
+};
+
+export type FdvEligibility = { eligible: boolean; reasons: string[] };
+
+/** A diagnostic gate only; this does not authorize or settle an on-chain market. */
+export function evaluateFdvEligibility(input: FdvEligibilityInput): FdvEligibility {
+  const reasons: string[] = [];
+  if (input.pricePairScaled1e18 <= 0n) reasons.push("non_positive_price");
+  if (input.totalSupplyAtObservation === null) reasons.push("historical_supply_unavailable");
+  else if (input.totalSupplyAtObservation <= 0n) reasons.push("non_positive_historical_supply");
+  if (input.priceEventAgeSeconds < 0n) reasons.push("price_event_after_observation");
+  if (input.maxStalenessSeconds < 0n || input.priceEventAgeSeconds > input.maxStalenessSeconds) {
+    reasons.push("stale_price_event");
+  }
+  return { eligible: reasons.length === 0, reasons };
+}
