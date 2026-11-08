@@ -19,6 +19,13 @@ const abi = [
  {type:"function",name:"claim",stateMutability:"nonpayable",inputs:[{name:"marketId",type:"uint256"}],outputs:[{type:"uint256"}]},
  {type:"function",name:"createMarket",stateMutability:"nonpayable",inputs:[{name:"curve",type:"address"},{name:"resolveAfter",type:"uint64"}],outputs:[{type:"uint256"}]},
 ] as const;
+const vibeCurveAbi = [
+ {type:"function",name:"token",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
+ {type:"function",name:"graduated",stateMutability:"view",inputs:[],outputs:[{type:"bool"}]},
+] as const;
+const vibeTokenAbi = [
+ {type:"function",name:"curve",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
+] as const;
 const tokenAbi = [
  {type:"function",name:"symbol",stateMutability:"view",inputs:[],outputs:[{type:"string"}]},
  {type:"function",name:"decimals",stateMutability:"view",inputs:[],outputs:[{type:"uint8"}]},
@@ -149,9 +156,21 @@ export default function App() {
  }
  async function faucet(){if(token)await transact("Request test tokens",(c,u)=>c.writeContract({account:u,chain,address:token,abi:tokenAbi,functionName:"faucet"}));}
  async function create(){
-  if(!/^0x[a-fA-F0-9]{40}$/.test(curve)){setError("Enter a valid VibeVibe curve address.");return;}
+  if(!/^0x[a-fA-F0-9]{40}$/.test(curve)){setError("Choose a valid VibeVibe curve from the indexed launch list.");return;}
+  const launch=discovery?.tokens.find(item=>item.curve.toLowerCase()===curve.toLowerCase());
+  if(!launch){setError("This curve is not in the current on-chain discovery registry. Refresh the registry before creating a market.");return;}
   const ts=Math.floor(new Date(deadline).getTime()/1000);
   if(!Number.isFinite(ts)||ts<=Date.now()/1000){setError("Choose a future resolution date and time.");return;}
+  try{
+   const curveAddress=getAddress(curve),tokenAddress=getAddress(launch.token);
+   const [curveToken,tokenCurve,graduated]=await Promise.all([
+    publicClient.readContract({address:curveAddress,abi:vibeCurveAbi,functionName:"token"}),
+    publicClient.readContract({address:tokenAddress,abi:vibeTokenAbi,functionName:"curve"}),
+    publicClient.readContract({address:curveAddress,abi:vibeCurveAbi,functionName:"graduated"}),
+   ]);
+   if(curveToken.toLowerCase()!==tokenAddress.toLowerCase()||tokenCurve.toLowerCase()!==curveAddress.toLowerCase())throw new Error("The token and curve contracts do not point to each other. Market creation blocked.");
+   if(graduated)throw new Error("This curve is already graduated. Choose an ungraduated VibeVibe launch.");
+  }catch(e){setError(e instanceof Error?e.message:"Could not verify this VibeVibe curve on-chain.");return;}
   await transact("Create market",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"createMarket",args:[getAddress(curve),BigInt(ts)]}));
   setCurve("");setDeadline("");
  }
