@@ -1,8 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { createPublicClient, http, parseAbi, parseAbiItem, type Address } from "viem";
+import { createPublicClient, encodeAbiParameters, http, keccak256, parseAbi, parseAbiItem, type Address } from "viem";
 import { CHAIN_ID, DEFAULT_RPC, FACTORIES } from "./config.js";
-import { classifyV6DiscoveryStatus, hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange } from "./v6-helpers.js";
+import { classifyV6DiscoveryStatus, curvePriceScaled1e18, fdvPairScaled1e18, hasMatchingTokenCurveLinks, isZeroAddress, latestLaunchRange, sqrtPriceFromPoolStateWord, v4PriceScaled1e18 } from "./v6-helpers.js";
 
 const rpcUrl = process.env.RPC_URL || DEFAULT_RPC;
 const confirmations = Math.max(1, Number(process.env.CONFIRMATIONS || 32));
@@ -52,17 +52,20 @@ function safeNumber(value:bigint|null|undefined):number {
 }
 
 /**
- * Experimental, read-only V6 adapter.
- * Kept separate from the older curveAt/launchTimestamp/graduated adapter.
- * Opt-in only: address and ABI still require independent Launchcast RPC checks.
+ * Read-only adapter for the active V6 factory confirmed against Robinhood Chain Testnet.
+ * Price snapshots are denominated in the launch's pair currency; FDV is not circulating market cap.
+ * This adapter is discovery/display data only and is never settlement authority.
  */
-const V6_FACTORY = "0xe794217880011f9cA6961340eD5c16EC9559Fea0" as Address;
+const V6_FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
 const v6FactoryReads = parseAbi([
   "function launchCount() view returns (uint256)",
   "function tokenOfLaunch(uint256 launchId) view returns (address)",
   "function curveOf(address token) view returns (address)",
   "function isV6Token(address token) view returns (bool)",
   "function isV6Curve(address curve) view returns (bool)",
+  "function locker() view returns (address)",
+  "function poolManager() view returns (address)",
+  "function hook() view returns (address)",
 ]);
 const v6TokenReads = parseAbi([
   "function name() view returns (string)",
@@ -71,6 +74,7 @@ const v6TokenReads = parseAbi([
   "function totalSupply() view returns (uint256)",
   "function curve() view returns (address)",
   "function transfersUnlocked() view returns (bool)",
+  "function pairCurrency() view returns (address)",
 ]);
 const v6CurveReads = parseAbi([
   "function token() view returns (address)",
@@ -80,17 +84,54 @@ const v6CurveReads = parseAbi([
   "function targetPairUnits() view returns (uint256)",
   "function pairPrincipal() view returns (uint128)",
   "function createdAt() view returns (uint256)",
+  "function currentRateBps() view returns (uint256)",
+  "function quoteBuyExactIn(uint256 pairIn) view returns (uint256 gross, uint256 net, uint256 cost, uint256 pairFee, uint256 refund)",
+]);
+const v6PairTokenReads = parseAbi([
+  "function decimals() view returns (uint8)",
+  "function symbol() view returns (string)",
+]);
+const v6LockerReads = parseAbi([
+  "function poolKeyOf(address token) view returns ((address currency0, address currency1, uint24 fee, int24 tickSpacing, address hooks))",
+]);
+const v6PoolManagerReads = parseAbi([
+  "function extsload(bytes32 slot) view returns (bytes32)",
 ]);
 
 async function discoverV6Tokens(safeHead: bigint, limit: number) {
   const code = await client.getCode({ address: V6_FACTORY, blockNumber: safeHead });
-  if (!code || code === "0x") throw new Error("V6 factory has no bytecode at the selected block.");
+  if (!code || code === "0x") throw new Error("Active V6 factory has no bytecode at the selected block.");
 
-  const launchCount = await client.readContract({
-    address: V6_FACTORY, abi: v6FactoryReads, functionName: "launchCount", blockNumber: safeHead,
-  });
+  const [launchCount, locker, poolManager, hook] = await Promise.all([
+    client.readContract({ address: V6_FACTORY, abi: v6FactoryReads, functionName: "launchCount", blockNumber: safeHead }),
+    client.readContract({ address: V6_FACTORY, abi: v6FactoryReads, functionName: "locker", blockNumber: safeHead }),
+    client.readContract({ address: V6_FACTORY, abi: v6FactoryReads, functionName: "poolManager", blockNumber: safeHead }),
+    client.readContract({ address: V6_FACTORY, abi: v6FactoryReads, functionName: "hook", blockNumber: safeHead }),
+  ]);
+  const [lockerCode, poolManagerCode] = await Promise.all([
+    client.getCode({ address: locker, blockNumber: safeHead }),
+    client.getCode({ address: poolManager, blockNumber: safeHead }),
+  ]);
+  if (!lockerCode || lockerCode === "0x") throw new Error("V6 factory locker() returned an address without bytecode.");
+  if (!poolManagerCode || poolManagerCode === "0x") throw new Error("V6 factory poolManager() returned an address without bytecode.");
+
   const { first, endExclusive } = latestLaunchRange(launchCount, limit);
-  const tokens: Array<Record<string, unknown>> = [];\n  const diagnostics = {\n    launchIdsAttempted: Number(endExclusive - first), zeroTokenAddresses: 0, nonV6Tokens: 0,\n    zeroCurveAddresses: 0, missingCurveCode: 0, nonV6Curves: 0, mismatchedLinks: 0,\n    readErrors: 0, validatedRecords: 0,\n  };
+  const tokens: Array<Record<string, unknown>> = [];
+  const diagnostics = {
+    launchIdsAttempted: Number(endExclusive - first),
+    zeroTokenAddresses: 0,
+    nonV6Tokens: 0,
+    zeroCurveAddresses: 0,
+    missingCurveCode: 0,
+    nonV6Curves: 0,
+    mismatchedLinks: 0,
+    mismatchedPairCurrencies: 0,
+    readErrors: 0,
+    pricingErrors: 0,
+    validatedRecords: 0,
+    curvePriceRecords: 0,
+    poolPriceRecords: 0,
+  };
 
   for (let launchId = first; launchId < endExclusive; launchId++) {
     try {
@@ -99,6 +140,7 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
         args: [launchId], blockNumber: safeHead,
       });
       if (isZeroAddress(token)) { diagnostics.zeroTokenAddresses++; continue; }
+
       const isV6Token = await client.readContract({
         address: V6_FACTORY, abi: v6FactoryReads, functionName: "isV6Token",
         args: [token], blockNumber: safeHead,
@@ -118,55 +160,196 @@ async function discoverV6Tokens(safeHead: bigint, limit: number) {
           args: [curve], blockNumber: safeHead,
         }),
       ]);
-      if (!curveCode || curveCode === "0x") { diagnostics.missingCurveCode++; continue; }\n      if (!isV6Curve) { diagnostics.nonV6Curves++; continue; }
+      if (!curveCode || curveCode === "0x") { diagnostics.missingCurveCode++; continue; }
+      if (!isV6Curve) { diagnostics.nonV6Curves++; continue; }
 
       const [curveToken, tokenCurve] = await Promise.all([
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "token", blockNumber: safeHead }),
         client.readContract({ address: token, abi: v6TokenReads, functionName: "curve", blockNumber: safeHead }),
       ]);
       if (!hasMatchingTokenCurveLinks(token, curve, curveToken, tokenCurve)) {
+        diagnostics.mismatchedLinks++;
         console.warn("V6 adapter skipped mismatched token/curve linkage:", launchId.toString());
         continue;
       }
 
       const [
-        name, symbol, decimals, totalSupply, transfersUnlocked,
-        pairCurrency, complete, sold, targetPairUnits, pairPrincipal, createdAt,
+        name, symbol, decimals, totalSupply, transfersUnlocked, tokenPairCurrency,
+        pairCurrency, complete, sold, targetPairUnits, pairPrincipal, createdAt, currentRateBps,
       ] = await Promise.all([
         client.readContract({ address: token, abi: v6TokenReads, functionName: "name", blockNumber: safeHead }),
         client.readContract({ address: token, abi: v6TokenReads, functionName: "symbol", blockNumber: safeHead }),
         client.readContract({ address: token, abi: v6TokenReads, functionName: "decimals", blockNumber: safeHead }),
         client.readContract({ address: token, abi: v6TokenReads, functionName: "totalSupply", blockNumber: safeHead }),
         client.readContract({ address: token, abi: v6TokenReads, functionName: "transfersUnlocked", blockNumber: safeHead }),
+        client.readContract({ address: token, abi: v6TokenReads, functionName: "pairCurrency", blockNumber: safeHead }),
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "pairCurrency", blockNumber: safeHead }),
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "complete", blockNumber: safeHead }),
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "sold", blockNumber: safeHead }),
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "targetPairUnits", blockNumber: safeHead }),
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "pairPrincipal", blockNumber: safeHead }),
         client.readContract({ address: curve, abi: v6CurveReads, functionName: "createdAt", blockNumber: safeHead }),
+        client.readContract({ address: curve, abi: v6CurveReads, functionName: "currentRateBps", blockNumber: safeHead }),
       ]);
+      if (tokenPairCurrency.toLowerCase() !== pairCurrency.toLowerCase()) {
+        diagnostics.mismatchedPairCurrencies++;
+        console.warn("V6 adapter skipped token/curve pair-currency mismatch:", launchId.toString());
+        continue;
+      }
+
+      let pairDecimals = 18;
+      let pairSymbol = "ETH";
+      if (!isZeroAddress(pairCurrency)) {
+        const [decimalsResult, symbolResult] = await Promise.all([
+          client.readContract({ address: pairCurrency, abi: v6PairTokenReads, functionName: "decimals", blockNumber: safeHead }),
+          client.readContract({ address: pairCurrency, abi: v6PairTokenReads, functionName: "symbol", blockNumber: safeHead }),
+        ]);
+        pairDecimals = Number(decimalsResult);
+        pairSymbol = symbolResult;
+      }
+
+      let pricing: Record<string, unknown> = {
+        status: "unavailable",
+        method: null,
+        pairCurrency,
+        pairSymbol,
+        pairDecimals,
+        readAtBlock: safeHead.toString(),
+        pricePairPerTokenScaled1e18: null,
+        fdvPairScaled1e18: null,
+      };
+
+      try {
+        if (!complete) {
+          const quoteInput = 10n ** BigInt(Math.max(0, pairDecimals - 3));
+          const [gross, net, cost, pairFee, refund] = await client.readContract({
+            address: curve, abi: v6CurveReads, functionName: "quoteBuyExactIn",
+            args: [quoteInput], blockNumber: safeHead,
+          });
+          if (net > 0n && cost > 0n) {
+            const price = curvePriceScaled1e18(cost, net, Number(decimals), pairDecimals);
+            pricing = {
+              ...pricing,
+              status: "available",
+              method: "curve_quote_buy_exact_in",
+              quoteInput: quoteInput.toString(),
+              grossTokensOut: gross.toString(),
+              netTokensOut: net.toString(),
+              pairCost: cost.toString(),
+              pairFee: pairFee.toString(),
+              refund: refund.toString(),
+              pricePairPerTokenScaled1e18: price.toString(),
+              fdvPairScaled1e18: fdvPairScaled1e18(price, totalSupply, Number(decimals)).toString(),
+            };
+            diagnostics.curvePriceRecords++;
+          } else {
+            pricing = { ...pricing, status: "zero_quote_output", method: "curve_quote_buy_exact_in" };
+          }
+        } else {
+          const key = await client.readContract({
+            address: locker, abi: v6LockerReads, functionName: "poolKeyOf",
+            args: [token], blockNumber: safeHead,
+          });
+          const currency0IsToken = key.currency0.toLowerCase() === token.toLowerCase();
+          const currency1IsToken = key.currency1.toLowerCase() === token.toLowerCase();
+          const otherCurrency = currency0IsToken ? key.currency1 : key.currency0;
+          if ((!currency0IsToken && !currency1IsToken)
+            || otherCurrency.toLowerCase() !== pairCurrency.toLowerCase()
+            || key.hooks.toLowerCase() !== hook.toLowerCase()) {
+            pricing = { ...pricing, status: "pool_key_mismatch", method: "uniswap_v4_pool_state" };
+          } else {
+            const poolId = keccak256(encodeAbiParameters(
+              [{ type: "address" }, { type: "address" }, { type: "uint24" }, { type: "int24" }, { type: "address" }],
+              [key.currency0, key.currency1, key.fee, key.tickSpacing, key.hooks],
+            ));
+            const stateSlot = keccak256(encodeAbiParameters(
+              [{ type: "bytes32" }, { type: "uint256" }], [poolId, 6n],
+            ));
+            const stateWord = await client.readContract({
+              address: poolManager, abi: v6PoolManagerReads, functionName: "extsload",
+              args: [stateSlot], blockNumber: safeHead,
+            });
+            const sqrtPriceX96 = sqrtPriceFromPoolStateWord(stateWord);
+            if (sqrtPriceX96 === 0n) {
+              pricing = { ...pricing, status: "empty_pool_state", method: "uniswap_v4_pool_state", poolId };
+            } else {
+              const price = v4PriceScaled1e18(
+                sqrtPriceX96, currency0IsToken, Number(decimals), pairDecimals,
+              );
+              pricing = {
+                ...pricing,
+                status: "available",
+                method: "uniswap_v4_pool_state",
+                poolId,
+                poolKey: key,
+                poolStateStorageSlot: "6",
+                sqrtPriceX96: sqrtPriceX96.toString(),
+                pricePairPerTokenScaled1e18: price.toString(),
+                fdvPairScaled1e18: fdvPairScaled1e18(price, totalSupply, Number(decimals)).toString(),
+              };
+              diagnostics.poolPriceRecords++;
+            }
+          }
+        }
+      } catch (error) {
+        diagnostics.pricingErrors++;
+        pricing = {
+          ...pricing,
+          status: "price_read_error",
+          error: error instanceof Error ? error.message.slice(0, 240) : String(error).slice(0, 240),
+        };
+      }
 
       tokens.push({
-        chainId: CHAIN_ID, generation: "v6-research", factory: V6_FACTORY,
-        launchId: launchId.toString(), token, curve, name, symbol, decimals: Number(decimals),
-        totalSupply: totalSupply.toString(), transfersUnlocked, pairCurrency, complete,
-        sold: sold.toString(), targetPairUnits: targetPairUnits.toString(),
-        pairPrincipal: pairPrincipal.toString(), createdAt: createdAt.toString(),
+        chainId: CHAIN_ID,
+        generation: "v6-active",
+        factory: V6_FACTORY,
+        launchId: launchId.toString(),
+        token,
+        curve,
+        name,
+        symbol,
+        decimals: Number(decimals),
+        totalSupply: totalSupply.toString(),
+        transfersUnlocked,
+        pairCurrency,
+        pairSymbol,
+        pairDecimals,
+        complete,
+        sold: sold.toString(),
+        targetPairUnits: targetPairUnits.toString(),
+        pairPrincipal: pairPrincipal.toString(),
+        createdAt: createdAt.toString(),
+        currentRateBps: currentRateBps.toString(),
+        pricing,
         stateReadAtBlock: safeHead.toString(),
       });
+      diagnostics.validatedRecords++;
     } catch (error) {
+      diagnostics.readErrors++;
       console.warn("V6 adapter could not inspect launch", launchId.toString(), String(error));
     }
     await new Promise(resolve => setTimeout(resolve, 75));
   }
 
   return {
-    schemaVersion: 1, chainId: CHAIN_ID,
-    source: "Opt-in V6 factory enumeration with factory flags and bidirectional token/curve checks",
-    generatedAt: new Date().toISOString(), factory: V6_FACTORY,
-    factoryLaunchCount: launchCount.toString(), readAtBlock: safeHead.toString(),
-    coverage: "latest_launches_only", totalTokens: tokens.length, tokens,
-    warning: "Experimental read-only V6 discovery. Factory address and ABI are based on independent community research and require independent verification. No price, market cap, settlement result, or creator attribution is inferred. Not settlement authority.",
+    schemaVersion: 2,
+    chainId: CHAIN_ID,
+    source: "Read-only active V6 factory, curve, token, locker and Uniswap V4 PoolManager reads",
+    generatedAt: new Date().toISOString(),
+    factory: V6_FACTORY,
+    factoryLocker: locker,
+    poolManager,
+    hook,
+    factoryLaunchCount: launchCount.toString(),
+    readAtBlock: safeHead.toString(),
+    status: classifyV6DiscoveryStatus(launchCount, diagnostics.validatedRecords, diagnostics.readErrors),
+    sampledLaunchIdRange: { first: first.toString(), endExclusive: endExclusive.toString() },
+    diagnostics,
+    coverage: "latest_launches_only",
+    totalTokens: tokens.length,
+    tokens,
+    warning: "Read-only discovery snapshot. Prices and FDV are denominated in each launch's pair currency; FDV uses total supply and is not circulating market cap. Curve quotes and V4 spot state are block snapshots, not settlement observations. No USD conversion or settlement result is inferred. Not settlement authority.",
   };
 }
 
@@ -217,7 +400,7 @@ async function main(){
     const v6 = await discoverV6Tokens(safeHead, latestPerFactory);
     const v6Output = resolve(process.cwd(), "../../web/public/data/vibevibe-v6-tokens.json");
     await mkdir(dirname(v6Output), { recursive: true });
-    await writeFile(v6Output, JSON.stringify(v6, null, 2) + "\\n", "utf8");
+    await writeFile(v6Output, JSON.stringify(v6, null, 2) + "\n", "utf8");
     console.log("V6-only discovery:", JSON.stringify({
       status: v6.status, factory: V6_FACTORY, launchCount: v6.factoryLaunchCount,
       records: v6.totalTokens, diagnostics: v6.diagnostics, readAtBlock: v6.readAtBlock, output: v6Output,
