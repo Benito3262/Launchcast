@@ -48,3 +48,25 @@ export async function findBlockAtOrBeforeTimestamp(
 
   return { blockNumber: low, timestamp: await timestampAt(low) };
 }
+
+export type V4PriceEventCandidate = {
+  source: "swap" | "initialize";
+  blockNumber: bigint;
+  logIndex: number;
+  sqrtPriceX96: bigint;
+  liquidity?: bigint;
+  transactionHash?: string;
+};
+
+export function selectLatestV4PriceEvent(
+  events: V4PriceEventCandidate[],
+  targetBlock: bigint,
+): V4PriceEventCandidate | null {
+  const eligible = events.filter(event => event.blockNumber <= targetBlock);
+  eligible.sort((a, b) => {
+    if (a.blockNumber < b.blockNumber) return -1;
+    if (a.blockNumber > b.blockNumber) return 1;
+    return a.logIndex - b.logIndex;
+  });
+  return eligible.at(-1) ?? null;
+}
