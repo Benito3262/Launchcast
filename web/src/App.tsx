@@ -86,7 +86,7 @@ export default function App() {
  const refresh=useCallback(async()=>{
   if(!configured)return;
   try{
-   const [count,admin,stake]=await Promise.all([
+   const [count,admin,stake,fee,recipient]=await Promise.all([
     publicClient.readContract({address,abi,functionName:"marketCount"}),
     publicClient.readContract({address,abi,functionName:"owner"}),
     publicClient.readContract({address,abi,functionName:"stakeToken"}),
