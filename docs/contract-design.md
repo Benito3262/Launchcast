@@ -4,7 +4,7 @@
 
 - `Launchcast.sol` holds the market state, ERC-20 stakes, settlement result, fee accounting, and claims.
 - `TestUSD.sol` is a faucet-only test token. It is not a real stablecoin and has no monetary value.
-- The configured stake token must be a conventional, exact-transfer, non-rebasing ERC-20. The contract checks balance deltas on every deposit and payout and reverts if the received amount differs from the requested amount. This catches fee-on-transfer behavior, but no generic contract check can guarantee that a token will never rebase or later change its behavior; the token implementation must be reviewed and trusted.
+- The configured stake token must be a conventional, exact-transfer, non-rebasing ERC-20. The contract checks both sender and recipient balance deltas on deposits and payouts and reverts if either side differs from the requested amount. Fee recipients cannot be set to the Launchcast contract itself, which would otherwise make an attempted fee withdrawal a self-transfer. This catches fee-on-transfer behavior, but no generic contract check can guarantee that a token will never rebase or later change its behavior; the token implementation must be reviewed and trusted.
 - `Deploy.s.sol` deploys a fresh TestUSD and Launchcast instance using the deployer's testnet wallet.
 
 ## Market lifecycle
