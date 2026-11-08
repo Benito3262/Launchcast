@@ -1,6 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPublicClient, createWalletClient, custom, defineChain, formatUnits, getAddress, http, parseUnits, type Address, type Hex, type WalletClient } from "viem";
 
+type Eip1193Provider = NonNullable<Window["ethereum"]>;
+type WalletChoice = { info: { uuid: string; name: string; icon: string; rdns: string }; provider: Eip1193Provider };
+function estimatePayout(market: Market, sideYes: boolean, stake: bigint, feeBps: number) {
+ const winningPool=(sideYes?market.yesPool:market.noPool)+stake;
+ const losingPool=sideYes?market.noPool:market.yesPool;
+ const fee=(winningPool>0n&&losingPool>0n)?(losingPool*BigInt(feeBps))/10000n:0n;
+ const payout=stake+((losingPool-fee)*stake)/winningPool;
+ return {payout,profit:payout-stake,multiplier:Number(payout)/Number(stake)};
+}
+
 const chain = defineChain({
   id: 46630, name: "Robinhood Chain Testnet",
   nativeCurrency: { name: "Robinhood Testnet ETH", symbol: "ETH", decimals: 18 },
@@ -59,6 +69,10 @@ export default function App() {
  const [address,setAddress]=useState<Address>((configuredEnvAddress || "") as Address);
  const [account,setAccount]=useState<Address>();
  const [wallet,setWallet]=useState<WalletClient>();
+ const [activeProvider,setActiveProvider]=useState<Eip1193Provider>();
+ const [walletChoices,setWalletChoices]=useState<WalletChoice[]>([]);
+ const [walletModal,setWalletModal]=useState(false);
+ const [walletLabel,setWalletLabel]=useState("");
  const [markets,setMarkets]=useState<Market[]>([]);
  const [positions,setPositions]=useState<Record<string,Position>>({});
  const [owner,setOwner]=useState<Address>();
@@ -139,26 +153,45 @@ export default function App() {
   return()=>{active=false;};
  },[]);
  useEffect(()=>{
-  const p=window.ethereum;if(!p?.on)return;
-  const changed=(...args:unknown[])=>{const a=args[0] as string[]|undefined;setAccount(a?.[0]?getAddress(a[0]):undefined);};
-  p.on("accountsChanged",changed);return()=>p.removeListener?.("accountsChanged",changed);
+  const announce=(event:Event)=>{const choice=(event as CustomEvent<WalletChoice>).detail;if(!choice?.provider||!choice.info?.uuid)return;setWalletChoices(current=>current.some(item=>item.info.uuid===choice.info.uuid)?current:[...current,choice]);};
+  window.addEventListener("eip6963:announceProvider",announce);
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+  return()=>window.removeEventListener("eip6963:announceProvider",announce);
  },[]);
+ useEffect(()=>{
+  const p=activeProvider;if(!p?.on)return;
+  const changed=(...args:unknown[])=>{const a=args[0] as string[]|undefined;setAccount(a?.[0]?getAddress(a[0]):undefined);if(!a?.[0]){setWallet(undefined);setWalletLabel("");}};
+  p.on("accountsChanged",changed);return()=>p.removeListener?.("accountsChanged",changed);
+ },[activeProvider]);
 
  const portfolio=useMemo(()=>markets.filter(m=>{const p=positions[m.id.toString()];return p&&(p.yes>0n||p.no>0n);}),[markets,positions]);
  const launchForCurve=(curveAddress:string)=>discovery?.tokens.find(item=>item.curve.toLowerCase()===curveAddress.toLowerCase());
  const visibleLaunches=useMemo(()=>discovery?.tokens.filter(item=>[item.name,item.symbol,item.token,item.curve,item.generation,item.launchId].some(value=>value?.toLowerCase().includes(discoveryQuery.toLowerCase())))||[],[discovery,discoveryQuery]);
 
- async function connect(){
-  setError("");if(!window.ethereum){setError("No wallet found. Open this site in MetaMask or another EVM wallet browser.");return;}
+ function connect(){setError("");setWalletModal(true);window.dispatchEvent(new Event("eip6963:requestProvider"));if(window.ethereum){setWalletChoices(current=>current.some(item=>item.info.uuid==="injected-default")?current:[...current,{info:{uuid:"injected-default",name:"Browser wallet",icon:"",rdns:"injected"},provider:window.ethereum!}]);}}
+ async function connectWithProvider(provider:Eip1193Provider,label:string){
+  setError("");
   try{
-   const client=createWalletClient({chain,transport:custom(window.ethereum as never)});
+   const client=createWalletClient({chain,transport:custom(provider as never)});
    const [user]=await client.requestAddresses();
    await client.switchChain({id:46630}).catch(async()=>{
-    await window.ethereum!.request({method:"wallet_addEthereumChain",params:[{chainId:"0xb626",chainName:chain.name,nativeCurrency:chain.nativeCurrency,rpcUrls:[rpc],blockExplorerUrls:[chain.blockExplorers.default.url]}]});
+    await provider.request({method:"wallet_addEthereumChain",params:[{chainId:"0xb626",chainName:chain.name,nativeCurrency:chain.nativeCurrency,rpcUrls:[rpc],blockExplorerUrls:[chain.blockExplorers.default.url]}]});
     await client.switchChain({id:46630});
    });
-   setWallet(client);setAccount(user);setNotice("Wallet connected to Robinhood Chain Testnet.");
+   setWallet(client);setActiveProvider(provider);setAccount(user);setWalletLabel(label);setWalletModal(false);setNotice("Connected with "+label+" on Robinhood Chain Testnet.");
   }catch(e){setError(e instanceof Error?e.message:"Wallet connection failed.");}
+ }
+ async function connectWalletConnect(){
+  const projectId=import.meta.env.VITE_REOWN_PROJECT_ID;
+  if(!projectId){setError("WalletConnect is not configured. Add the Reown project ID in the deployment environment.");return;}
+  setBusy("Connecting WalletConnect");
+  try{
+   const {default: EthereumProvider}=await import("@walletconnect/ethereum-provider");
+   const provider=await EthereumProvider.init({projectId,chains:[46630],showQrModal:true,rpcMap:{46630:rpc},methods:["eth_sendTransaction","personal_sign","eth_signTypedData","eth_signTypedData_v4","eth_accounts","eth_requestAccounts","wallet_switchEthereumChain","wallet_addEthereumChain"],events:["chainChanged","accountsChanged"]});
+   await provider.connect();
+   await connectWithProvider(provider as unknown as Eip1193Provider,"WalletConnect");
+  }catch(e){setError(e instanceof Error?e.message:"WalletConnect connection failed.");}
+  finally{setBusy("");}
  }
 
  async function transact(label:string,action:(client:WalletClient,user:Address)=>Promise<Hex>):Promise<boolean>{
@@ -221,6 +254,7 @@ export default function App() {
    <section className="hero"><div className="hero-copy"><div className="eyebrow"><span className="pulse"/> LIVE ON ROBINHOOD TESTNET <span className="hero-tag">VIBE / VIBE LAUNCHES</span></div><h1>Every launch has a moment.<br/><em>Call it before it happens.</em></h1><p>Pick a side on VibeVibe token graduations. Follow the pools, back your read and verify every outcome on-chain.</p><div className="hero-cta"><a href="#markets" className="hero-link">Explore markets <span>↘</span></a><span className="hero-note">No real funds · Testnet only</span></div><div className="hero-stats"><div><strong>{markets.length.toString().padStart(2,"0")}</strong><span>Markets live</span></div><div><strong>{portfolio.length.toString().padStart(2,"0")}</strong><span>Your positions</span></div><div><strong>{symbol}</strong><span>Test currency</span></div></div></div><div className="hero-art" aria-hidden="true"><div className="art-orbit orbit-one"/><div className="art-orbit orbit-two"/><div className="art-core"><span className="art-spark">✳</span><b>VIBE</b><small>CALL THE CURVE</small></div><div className="float-chip chip-top">YES <b>↑</b></div><div className="float-chip chip-bottom">NO <b>↓</b></div><div className="art-caption">THE NEXT MOVE<br/><strong>IS YOUR CALL.</strong></div></div></section>
    {!configured&&<div className="notice warning"><strong>Contracts not connected yet.</strong> The public deployment config has not loaded. Refresh the page or check the deployment record before connecting a wallet.</div>}
    {notice&&<div className="notice success">{notice}</div>}{error&&<div className="notice danger">{error}<button className="dismiss" onClick={()=>setError("")}>Dismiss</button></div>}
+   {walletModal&&<div className="wallet-modal-backdrop" onClick={()=>setWalletModal(false)}><section className="wallet-modal" role="dialog" aria-modal="true" aria-labelledby="wallet-modal-title" onClick={e=>e.stopPropagation()}><button className="wallet-modal-close" onClick={()=>setWalletModal(false)} aria-label="Close wallet selector">×</button><span className="eyebrow">CONNECT A WALLET</span><h2 id="wallet-modal-title">Choose your wallet</h2><p>Connect an EVM wallet to Robinhood Chain Testnet. Your wallet will ask you to approve the connection.</p><div className="wallet-choice-list">{walletChoices.map(choice=><button className="wallet-choice" key={choice.info.uuid} onClick={()=>void connectWithProvider(choice.provider,choice.info.name)}>{choice.info.icon?<img src={choice.info.icon} alt=""/>:<span className="wallet-choice-mark">W</span>}<span>{choice.info.name}</span><b>↗</b></button>)}</div><button className="walletconnect-choice" disabled={Boolean(busy)} onClick={()=>void connectWalletConnect()}>{busy==="Connecting WalletConnect"?"Opening WalletConnect…":"WalletConnect · Mobile & QR"}</button><small>Supports compatible EVM wallets. Network: Robinhood Chain Testnet (46630).</small></section></div>}
    <section className="discovery-panel">
     <div className="discovery-heading"><div><div className="eyebrow">VIBEVIBE TOKEN DISCOVERY</div><h2>Recent launches</h2><p>Latest factory launch IDs cross-checked against live token and curve contracts.</p></div><span className="discovery-count">{discovery?discovery.totalTokens+" verified recent":"INDEX NOT RUN"}</span></div>
     {!discovery||discovery.tokens.length===0?<div className="discovery-empty">The registry has not been generated yet. Run the GitHub Actions discovery workflow to read factory launch IDs and verify their token/curve pairs on Robinhood Chain Testnet.</div>:<>
@@ -231,9 +265,9 @@ export default function App() {
    <section className="toolbar" id="markets"><div className="tabs"><button className={tab==="markets"?"active":""} onClick={()=>setTab("markets")}>All markets <span>{markets.length}</span></button><button className={tab==="portfolio"?"active":""} onClick={()=>setTab("portfolio")}>Portfolio <span>{portfolio.length}</span></button></div><div className="toolbar-right">{account&&<span className="balance">Balance <b>{units(balance,decimals)} {symbol}</b></span>}<button className="refresh" onClick={()=>void refresh()}>↻ Refresh</button></div></section>
    {tab==="markets"?<section className="market-list">
     {markets.length===0?<div className="empty"><div className="empty-icon">✳</div><h3>The board is clear</h3><p>New markets appear here when a verified VibeVibe launch is listed.</p></div>:markets.map(m=>{
-     const id=m.id.toString(),p=positions[id],launch=launchForCurve(m.curve),total=m.yesPool+m.noPool,closed=BigInt(Math.floor(Date.now()/1000))>=m.resolveAfter,yesShare=total===0n?50:Number(m.yesPool*10000n/total)/100;
+     const id=m.id.toString(),p=positions[id],launch=launchForCurve(m.curve),total=m.yesPool+m.noPool,closed=BigInt(Math.floor(Date.now()/1000))>=m.resolveAfter,yesShare=total===0n?50:Number(m.yesPool*10000n/total)/100,stakeText=amounts[id]||"",stakeValue=(()=>{try{return stakeText?parseUnits(stakeText,decimals):0n;}catch{return 0n;}})(),yesEstimate=stakeValue>0n?estimatePayout(m,true,stakeValue,feeBps):null,noEstimate=stakeValue>0n?estimatePayout(m,false,stakeValue,feeBps):null;
      return <article className="market-card market-card-rich" key={id}><div className="market-head"><span className={m.resolved?"status resolved":closed?"status closed":"status live"}>{m.resolved?"RESOLVED":closed?"AWAITING SETTLEMENT":"OPEN FOR CALLS"}</span><span className="market-id">#{id} · VIBE CURVE</span></div><div className="market-token-row"><div className="token-orb">{(launch?.symbol||launch?.name||"V").slice(0,1).toUpperCase()}</div><div className="market-title-wrap"><span className="market-kicker">{launch?.generation||"VIBEVIBE LAUNCH"}</span><h3>Will {launch?.name||short(m.curve)}{launch?.symbol?" ("+launch.symbol+")":""} graduate before settlement?</h3></div></div><div className="market-meta"><span>RESOLUTION</span><b>{closed?"Deadline passed":date(m.resolveAfter)}</b><a href={"https://explorer.testnet.chain.robinhood.com/address/"+m.curve} target="_blank" rel="noreferrer">Curve explorer ↗</a></div><div className="market-sentiment"><div className="sentiment-head"><span>POOL SENTIMENT</span><span>{units(total,decimals)} {symbol} staked</span></div><div className="sentiment-bar"><i style={{width:yesShare+"%"}}/></div><div className="sentiment-labels"><span><b>YES {yesShare.toFixed(1)}%</b><small>{units(m.yesPool,decimals)} {symbol}</small></span><span><b>NO {(100-yesShare).toFixed(1)}%</b><small>{units(m.noPool,decimals)} {symbol}</small></span></div></div><div className="market-foot"><span>Market #{id}</span>{m.resolved&&<b className="outcome">{m.outcomeYes?"YES WON":"NO WON"}</b>}</div>{p&&(p.yes>0n||p.no>0n)&&<div className="your-position"><span>YOUR POSITION</span><b>YES {units(p.yes,decimals)} · NO {units(p.no,decimals)} {symbol}</b>{p.claimed&&<small>CLAIMED</small>}</div>}
-     {!m.resolved&&!closed&&account&&<div className="bet-panel"><label>Enter your stake<input inputMode="decimal" placeholder={"Amount in "+symbol} value={amounts[id]||""} onChange={e=>setAmounts(old=>({...old,[id]:e.target.value}))}/></label><div className="bet-actions"><button className="yes-button" disabled={Boolean(busy)} onClick={()=>void bet(m,true)}>Back YES ↗</button><button className="no-button" disabled={Boolean(busy)} onClick={()=>void bet(m,false)}>Back NO ↘</button></div></div>}
+     {!m.resolved&&!closed&&account&&<div className="bet-panel"><label>Enter your stake<input inputMode="decimal" placeholder={"Amount in "+symbol} value={stakeText} onChange={e=>setAmounts(old=>({...old,[id]:e.target.value}))}/></label><div className="odds-grid"><div><span>YES EST. RETURN</span><b>{yesEstimate?yesEstimate.multiplier.toFixed(2)+"×":"—"}</b><small>{yesEstimate?units(yesEstimate.payout,decimals)+" "+symbol+" payout · +"+units(yesEstimate.profit,decimals)+" profit":"Enter a stake to calculate"}</small></div><div><span>NO EST. RETURN</span><b>{noEstimate?noEstimate.multiplier.toFixed(2)+"×":"—"}</b><small>{noEstimate?units(noEstimate.payout,decimals)+" "+symbol+" payout · +"+units(noEstimate.profit,decimals)+" profit":"Enter a stake to calculate"}</small></div></div><div className="bet-actions"><button className="yes-button" disabled={Boolean(busy)} onClick={()=>void bet(m,true)}>Back YES ↗</button><button className="no-button" disabled={Boolean(busy)} onClick={()=>void bet(m,false)}>Back NO ↘</button></div><p className="odds-note">Indicative pooled odds after your stake, using the current pools and {(feeBps/100).toFixed(2)}% fee. Other bets can change the final payout before settlement.</p></div>}
      {!account&&!m.resolved&&!closed&&<button className="connect-hint" onClick={connect}>Connect wallet to take a position ↗</button>}
      {closed&&!m.resolved&&<button className="settle-button" disabled={!account||Boolean(busy)} onClick={()=>void transact("Settle market",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"settleMarket",args:[m.id]}))}>Settle market ↗</button>}
      {m.resolved&&p&&!p.claimed&&<button className="claim-button" disabled={!account||Boolean(busy)} onClick={()=>void transact("Claim position",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"claim",args:[m.id]}))}>Claim payout ↗</button>}</article>;
