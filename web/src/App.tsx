@@ -41,7 +41,7 @@ type DiscoveredLaunch = {
  blockNumber:number|null; launchTimestamp:string|null; name:string|null; symbol:string|null; decimals:number|null;
  graduated:boolean|null; complete:boolean|null; transfersUnlocked:boolean|null;
 };
-type DiscoveryFile = { generatedAt:string; totalTokens:number; totalLaunches?:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
+type DiscoveryFile = { generatedAt:string; headBlock?:string; safeHeadBlock?:string; totalTokens:number; totalLaunches?:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
 const rpc = import.meta.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com";
 const publicClient = createPublicClient({chain,transport:http(rpc)});
 const short = (s:string) => s ? s.slice(0,6)+"…"+s.slice(-4) : "—";
