@@ -1,5 +1,9 @@
 name: Refresh VibeVibe token registry
 
+concurrency:
+  group: vibevibe-discovery-${{ github.ref }}
+  cancel-in-progress: false
+
 on:
   workflow_dispatch:
   push:
@@ -31,7 +35,8 @@ jobs:
           restore-keys: |
             vibevibe-discovery-${{ runner.os }}-${{ github.ref_name }}-
       - run: npm install
-      - run: npm run discover
+      - name: Scan all configured factory history on first pass
+        run: npm run discover:full
       - name: Commit updated token registry
         working-directory: .
         run: |
@@ -42,5 +47,6 @@ jobs:
             echo "Token registry is unchanged."
           else
             git commit -m "Refresh VibeVibe token discovery registry"
-            git push
+            git pull --rebase origin main
+          git push
           fi
