@@ -36,6 +36,13 @@ jobs:
         run: |
           test -n "$PRIVATE_KEY" || (echo "Missing LAUNCHCAST_TESTNET_PRIVATE_KEY repository secret." && exit 1)
           test -n "$FEE_RECIPIENT" || (echo "Missing LAUNCHCAST_FEE_RECIPIENT repository secret." && exit 1)
+          [[ "$FEE_RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "FEE_RECIPIENT must be a valid EVM address." && exit 1)
+          test "${FEE_RECIPIENT,,}" != "0x0000000000000000000000000000000000000000" || (echo "FEE_RECIPIENT cannot be the zero address." && exit 1)
+          DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
+          BALANCE="$(cast balance "$DEPLOYER" --rpc-url "$RPC_URL")"
+          echo "Deployer: $DEPLOYER"
+          echo "Testnet ETH balance (wei): $BALANCE"
+          test "$BALANCE" != "0" || (echo "Deployer has no testnet ETH for gas." && exit 1)
           CHAIN_ID="$(cast chain-id --rpc-url "$RPC_URL")"
           echo "Connected chain ID: $CHAIN_ID"
           test "$CHAIN_ID" = "46630" || (echo "Refusing to deploy: RPC is not Robinhood Chain Testnet." && exit 1)
