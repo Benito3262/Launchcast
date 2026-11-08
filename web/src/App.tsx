@@ -12,10 +12,16 @@ const abi = [
  {type:"function",name:"owner",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
  {type:"function",name:"stakeToken",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
  {type:"function",name:"marketCount",stateMutability:"view",inputs:[],outputs:[{type:"uint256"}]},
+ {type:"function",name:"feeBps",stateMutability:"view",inputs:[],outputs:[{type:"uint16"}]},
+ {type:"function",name:"feeRecipient",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
+ {type:"function",name:"accruedFeesByRecipient",stateMutability:"view",inputs:[{name:"recipient",type:"address"}],outputs:[{type:"uint256"}]},
  {type:"function",name:"getMarket",stateMutability:"view",inputs:[{name:"marketId",type:"uint256"}],outputs:[{name:"market",type:"tuple",components:[{name:"curve",type:"address"},{name:"resolveAfter",type:"uint64"},{name:"yesPool",type:"uint128"},{name:"noPool",type:"uint128"},{name:"outcomeYes",type:"bool"},{name:"resolved",type:"bool"}]}]},
  {type:"function",name:"getPosition",stateMutability:"view",inputs:[{name:"marketId",type:"uint256"},{name:"user",type:"address"}],outputs:[{name:"yesAmount",type:"uint256"},{name:"noAmount",type:"uint256"},{name:"claimed",type:"bool"}]},
  {type:"function",name:"placeBet",stateMutability:"nonpayable",inputs:[{name:"marketId",type:"uint256"},{name:"sideYes",type:"bool"},{name:"amount",type:"uint256"}],outputs:[]},
  {type:"function",name:"settleMarket",stateMutability:"nonpayable",inputs:[{name:"marketId",type:"uint256"}],outputs:[]},
+ {type:"function",name:"settleMarkets",stateMutability:"nonpayable",inputs:[{name:"marketIds",type:"uint256[]"}],outputs:[]},
+ {type:"function",name:"setFeeConfig",stateMutability:"nonpayable",inputs:[{name:"newFeeBps",type:"uint16"},{name:"newFeeRecipient",type:"address"}],outputs:[]},
+ {type:"function",name:"withdrawFees",stateMutability:"nonpayable",inputs:[],outputs:[]},
  {type:"function",name:"claim",stateMutability:"nonpayable",inputs:[{name:"marketId",type:"uint256"}],outputs:[{type:"uint256"}]},
  {type:"function",name:"createMarket",stateMutability:"nonpayable",inputs:[{name:"curve",type:"address"},{name:"resolveAfter",type:"uint64"}],outputs:[{type:"uint256"}]},
 ] as const;
@@ -60,6 +66,11 @@ export default function App() {
  const [symbol,setSymbol]=useState("tUSD");
  const [decimals,setDecimals]=useState(6);
  const [balance,setBalance]=useState(0n);
+ const [feeBps,setFeeBps]=useState(0);
+ const [feeRecipient,setFeeRecipient]=useState<Address>();
+ const [feeBalance,setFeeBalance]=useState(0n);
+ const [newFeeBps,setNewFeeBps]=useState("0");
+ const [newFeeRecipient,setNewFeeRecipient]=useState("");
  const [amounts,setAmounts]=useState<Record<string,string>>({});
  const [curve,setCurve]=useState("");
  const [deadline,setDeadline]=useState("");
@@ -79,8 +90,10 @@ export default function App() {
     publicClient.readContract({address,abi,functionName:"marketCount"}),
     publicClient.readContract({address,abi,functionName:"owner"}),
     publicClient.readContract({address,abi,functionName:"stakeToken"}),
+    publicClient.readContract({address,abi,functionName:"feeBps"}),
+    publicClient.readContract({address,abi,functionName:"feeRecipient"}),
    ]);
-   setOwner(admin);setToken(stake);
+   setOwner(admin);setToken(stake);setFeeBps(Number(fee));setFeeRecipient(recipient);setNewFeeBps(String(Number(fee)));setNewFeeRecipient(recipient);
    const [sym,dec]=await Promise.all([
     publicClient.readContract({address:stake,abi:tokenAbi,functionName:"symbol"}).catch(()=>"tUSD"),
     publicClient.readContract({address:stake,abi:tokenAbi,functionName:"decimals"}).catch(()=>6),
@@ -101,7 +114,9 @@ export default function App() {
      })),
     ]);
     setBalance(bal);setPositions(Object.fromEntries(pos));
-   }else{setBalance(0n);setPositions({});}
+    const availableFees=await publicClient.readContract({address,abi,functionName:"accruedFeesByRecipient",args:[account]}).catch(()=>0n);
+    setFeeBalance(availableFees);
+   }else{setBalance(0n);setPositions({});setFeeBalance(0n);}
    setError("");
   }catch(e){setError(e instanceof Error?e.message:"Unable to read Launchcast contracts.");}
  },[account,configured]);
@@ -168,6 +183,18 @@ export default function App() {
   });
  }
  async function faucet(){if(token)await transact("Request test tokens",(c,u)=>c.writeContract({account:u,chain,address:token,abi:tokenAbi,functionName:"faucet"}));}
+ async function settleReadyMarkets(){
+  const now=BigInt(Math.floor(Date.now()/1000));
+  const ready=markets.filter(m=>!m.resolved&&m.resolveAfter<=now).map(m=>m.id).slice(0,25);
+  if(!ready.length){setNotice("There are no markets ready for settlement.");return;}
+  await transact("Settle "+ready.length+" ready markets",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"settleMarkets",args:[ready]}));
+ }
+ async function updateFees(){
+  const bps=Number(newFeeBps);
+  if(!Number.isInteger(bps)||bps<0||bps>1000){setError("Fee must be a whole number between 0 and 1000 basis points (0–10%).");return;}
+  if(!/^0x[a-fA-F0-9]{40}$/.test(newFeeRecipient)){setError("Enter a valid fee recipient address.");return;}
+  await transact("Update fee settings",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"setFeeConfig",args:[bps,getAddress(newFeeRecipient)]}));
+ }
  async function create(){
   if(!/^0x[a-fA-F0-9]{40}$/.test(curve)){setError("Choose a valid VibeVibe curve from the indexed launch list.");return;}
   const launch=discovery?.tokens.find(item=>item.curve.toLowerCase()===curve.toLowerCase());
@@ -212,8 +239,9 @@ export default function App() {
      </article>;
     })}
    </section>:<section className="market-list">{!account?<div className="empty"><h3>Connect your wallet</h3><p>Your positions will appear here.</p></div>:portfolio.length===0?<div className="empty"><h3>No positions yet</h3><p>Your bets and claim status will appear here.</p></div>:portfolio.map(m=><article className="market-card" key={m.id.toString()}><div className="market-head"><span className="market-id">MARKET #{m.id.toString()}</span><span className={m.resolved?"status resolved":"status live"}>{m.resolved?"RESOLVED":"OPEN"}</span></div><h3>Will {launchForCurve(m.curve)?.name||short(m.curve)}{launchForCurve(m.curve)?.symbol?" ("+launchForCurve(m.curve)?.symbol+")":""} have graduated when someone settles this market?</h3><p className="your-position">YES {units(positions[m.id.toString()].yes,decimals)} · NO {units(positions[m.id.toString()].no,decimals)} {symbol}</p>{m.resolved&&!positions[m.id.toString()].claimed&&<button className="claim-button" onClick={()=>void transact("Claim position",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"claim",args:[m.id]}))}>Claim payout</button>}</article>)}</section>}
+   {account&&feeBalance>0n&&<section className="wallet-tools"><div><span className="eyebrow">FEE RECIPIENT</span><h3>{units(feeBalance,decimals)} {symbol} available</h3><p>Fees allocated to the connected wallet can be withdrawn from the protocol contract.</p></div><button className="outline-button" disabled={Boolean(busy)} onClick={()=>void transact("Withdraw protocol fees",(c,u)=>c.writeContract({account:u,chain,address,abi,functionName:"withdrawFees"}))}>Withdraw fees</button></section>}
    {account&&token&&<section className="wallet-tools"><div><span className="eyebrow">TESTNET ONLY</span><h3>Need test tokens?</h3><p>Request free tUSD from the faucet contract. Test tokens have no monetary value.</p></div><button className="outline-button" disabled={Boolean(busy)} onClick={()=>void faucet()}>Get test {symbol}</button></section>}
-   {isOwner&&<section className="admin-panel"><div className="eyebrow">ADMIN TOOLS</div><h2>Create a VibeVibe market</h2><p>Create markets only for curves whose <code>graduated()</code> getter has been verified. YES means the getter returns true when settlement is executed after the deadline.</p><label>Curve contract address<input value={curve} onChange={e=>setCurve(e.target.value)} placeholder="0x…"/></label><label>Resolve after<input type="datetime-local" value={deadline} onChange={e=>setDeadline(e.target.value)}/></label><button className="primary-button" disabled={Boolean(busy)} onClick={()=>void create()}>Create market</button></section>}
+   {isOwner&&<section className="admin-panel"><div className="eyebrow">ADMIN TOOLS</div><h2>Create a VibeVibe market</h2><p>Create markets only for curves whose <code>graduated()</code> getter has been verified. YES means the getter returns true when settlement is executed after the deadline.</p><label>Curve contract address<input value={curve} onChange={e=>setCurve(e.target.value)} placeholder="0x…"/></label><label>Resolve after<input type="datetime-local" value={deadline} onChange={e=>setDeadline(e.target.value)}/></label><button className="primary-button" disabled={Boolean(busy)} onClick={()=>void create()}>Create market</button><div className="admin-divider"/><div className="admin-subhead"><span className="eyebrow">SETTLEMENT QUEUE</span><b>{markets.filter(m=>!m.resolved&&m.resolveAfter<=BigInt(Math.floor(Date.now()/1000))).length} ready</b></div><p>Settlement reads the curve’s current <code>graduated()</code> state. Anyone can settle an eligible market; this button batches up to 25.</p><button className="outline-button" disabled={Boolean(busy)||!markets.some(m=>!m.resolved&&m.resolveAfter<=BigInt(Math.floor(Date.now()/1000)))} onClick={()=>void settleReadyMarkets()}>Settle ready markets</button><div className="admin-divider"/><span className="eyebrow">PROTOCOL FEES</span><p>Current fee: <strong>{(feeBps/100).toFixed(2)}%</strong> · Recipient: <code>{feeRecipient?short(feeRecipient):"—"}</code></p><label>Fee in basis points (0–1000)<input inputMode="numeric" value={newFeeBps} onChange={e=>setNewFeeBps(e.target.value)}/></label><label>Fee recipient<input value={newFeeRecipient} onChange={e=>setNewFeeRecipient(e.target.value)} placeholder="0x…"/></label><button className="primary-button" disabled={Boolean(busy)} onClick={()=>void updateFees()}>Save fee settings</button></section>}
    <footer><div className="footer-brand"><img src="/launchcast-mark.svg" alt="" /><span>launchcast.</span></div><span>Independent app for the VibeVibe ecosystem · Robinhood Chain Testnet</span><span>No real funds · Verify every transaction</span></footer>
   </main>
  </div>;
