@@ -37,7 +37,7 @@ async function scanRange(from:bigint,to:bigint,chunk:bigint,found:Launch[]):Prom
    const factory=FACTORIES.find(f=>f.address.toLowerCase()===log.address.toLowerCase());if(!factory)continue;
    found.push({chainId:CHAIN_ID,generation:factory.generation,factory:factory.address,launchId:String(log.args.launchId),token:log.args.token,curve:log.args.curve,creator:log.args.creator,creatorFeeRecipient:log.args.creatorFeeRecipient,creatorVault:log.args.creatorVault,quoteCurrency:log.args.quoteCurrency,initialBuy:String(log.args.initialBuy),initialTokensBought:String(log.args.initialTokensBought),metadataSchemaVersion:Number(log.args.metadataSchemaVersion),metadataDigest:log.args.metadataDigest,metadataURI:log.args.metadataURI,blockNumber:safeNumber(log.blockNumber),blockHash:log.blockHash,transactionHash:log.transactionHash,logIndex:log.logIndex});
   }
-  const nextChunk=chunk<BigInt(initialChunk)?(chunk*2n>BigInt(initialChunk)?BigInt(initialChunk):chunk*2n):chunk;
+  const nextChunk=chunk < BigInt(initialChunk)?(chunk*2n>BigInt(initialChunk)?BigInt(initialChunk):chunk*2n):chunk;
   await scanRange(end+1n,to,nextChunk,found);
  }catch(error){
   if(!rangeError(error)||chunk<=2_000n)throw error;
