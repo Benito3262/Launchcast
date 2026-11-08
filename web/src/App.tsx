@@ -29,6 +29,12 @@ const tokenAbi = [
 ] as const;
 type Market = {id:bigint;curve:Address;resolveAfter:bigint;yesPool:bigint;noPool:bigint;outcomeYes:boolean;resolved:boolean};
 type Position = {yes:bigint;no:bigint;claimed:boolean};
+type DiscoveredLaunch = {
+ token:string; curve:string; generation:string; launchId:string; creator:string;
+ blockNumber:number; name:string|null; symbol:string|null; decimals:number|null;
+ graduated:boolean|null; complete:boolean|null; transfersUnlocked:boolean|null;
+};
+type DiscoveryFile = { generatedAt:string; totalTokens:number; coverage:string; warning:string; tokens:DiscoveredLaunch[] };
 const rpc = import.meta.env.VITE_ROBINHOOD_TESTNET_RPC || "https://rpc.testnet.chain.robinhood.com";
 const publicClient = createPublicClient({chain,transport:http(rpc)});
 const short = (s:string) => s ? s.slice(0,6)+"…"+s.slice(-4) : "—";
@@ -51,7 +57,7 @@ export default function App() {
  const [busy,setBusy]=useState("");
  const [notice,setNotice]=useState("");
  const [error,setError]=useState("");
- const [tab,setTab]=useState<"markets"|"portfolio">("markets");
+ const [tab,setTab]=useState<"markets"|"portfolio">("markets");\n const [discovery,setDiscovery]=useState<DiscoveryFile|null>(null);
  const configured=Boolean(address && /^0x[a-fA-F0-9]{40}$/.test(address));
  const isOwner=Boolean(account && owner && account.toLowerCase()===owner.toLowerCase());
 
@@ -90,6 +96,13 @@ export default function App() {
  },[account,configured]);
 
  useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{
+  let active=true;
+  fetch("/data/vibevibe-tokens.json").then(r=>{if(!r.ok)throw new Error("Discovery file not generated");return r.json();})
+   .then((data:DiscoveryFile)=>{if(active)setDiscovery(data);})
+   .catch(()=>{if(active)setDiscovery(null);});
+  return()=>{active=false;};
+ },[]);
  useEffect(()=>{
   const p=window.ethereum;if(!p?.on)return;
   const changed=(...args:unknown[])=>{const a=args[0] as string[]|undefined;setAccount(a?.[0]?getAddress(a[0]):undefined);};
@@ -147,6 +160,13 @@ export default function App() {
    <section className="hero"><div className="eyebrow"><span className="pulse"/> LIVE ON TESTNET</div><h1>Trade your conviction.<br/><em>Verify it on-chain.</em></h1><p>Prediction markets for VibeVibe token launches. Outcomes are resolved from the curve contract itself.</p><div className="hero-stats"><div><strong>{markets.length}</strong><span>Markets created</span></div><div><strong>{portfolio.length}</strong><span>Your positions</span></div><div><strong>{symbol}</strong><span>Test stake asset</span></div></div></section>
    {!configured&&<div className="notice warning"><strong>Contracts not connected yet.</strong> Add the deployed Launchcast address to <code>web/.env</code> as <code>VITE_LAUNCHCAST_ADDRESS</code>. No deployment is assumed.</div>}
    {notice&&<div className="notice success">{notice}</div>}{error&&<div className="notice danger">{error}<button className="dismiss" onClick={()=>setError("")}>Dismiss</button></div>}
+   <section className="discovery-panel">
+    <div className="discovery-heading"><div><div className="eyebrow">VIBEVIBE TOKEN DISCOVERY</div><h2>Recent launches</h2><p>Launch events indexed directly from configured factory contracts.</p></div><span className="discovery-count">{discovery?discovery.totalTokens+" indexed":"INDEX NOT RUN"}</span></div>
+    {!discovery||discovery.tokens.length===0?<div className="discovery-empty">Run <code>npm run discover</code> in the web folder to generate the testnet launch registry. No API-sourced or guessed token list is shown.</div>:<>
+     <div className="discovery-list">{discovery.tokens.slice(0,8).map(item=><article className="discovery-item" key={item.token}><div className="discovery-token"><strong>{item.name||"Unnamed token"} {item.symbol?"("+item.symbol+")":""}</strong><span>{item.generation.toUpperCase()} · launch #{item.launchId} · block {item.blockNumber.toLocaleString()}</span></div><div className="discovery-state"><span>{item.graduated===null?"Graduation unknown":item.graduated?"Graduated":"Not graduated"}</span><a href={"https://explorer.testnet.chain.robinhood.com/address/"+item.token} target="_blank" rel="noreferrer">Token ↗</a><a href={"https://explorer.testnet.chain.robinhood.com/address/"+item.curve} target="_blank" rel="noreferrer">Curve ↗</a></div></article>)}</div>
+     <p className="discovery-footnote">{discovery.coverage.replaceAll("_"," ")} · State reads are snapshots, not historical facts. This registry is not used to settle markets.</p>
+    </>}
+   </section>
    <section className="toolbar"><div className="tabs"><button className={tab==="markets"?"active":""} onClick={()=>setTab("markets")}>All markets <span>{markets.length}</span></button><button className={tab==="portfolio"?"active":""} onClick={()=>setTab("portfolio")}>Portfolio <span>{portfolio.length}</span></button></div><div className="toolbar-right">{account&&<span className="balance">Balance <b>{units(balance,decimals)} {symbol}</b></span>}<button className="refresh" onClick={()=>void refresh()}>↻ Refresh</button></div></section>
    {tab==="markets"?<section className="market-list">
     {markets.length===0?<div className="empty"><div className="empty-icon">◎</div><h3>No markets yet</h3><p>Markets appear after Launchcast is deployed and the first verified VibeVibe curve market is created.</p></div>:markets.map(m=>{
