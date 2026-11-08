@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "chainId": 46630,
+  "source": "Robinhood Chain Testnet factory event logs",
+  "generatedAt": null,
+  "headBlock": null,
+  "safeHeadBlock": null,
+  "coverage": "not_indexed",
+  "warning": "Run npm run discover from the web directory to build a recent-window registry. Three configured factories only; not settlement authority.",
+  "factories": [],
+  "totalTokens": 0,
+  "tokens": []
+}
