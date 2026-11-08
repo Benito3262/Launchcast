@@ -30,13 +30,13 @@ The MVP will include wallet connection, eligible markets, YES/NO positions, a po
 
 The initial Solidity implementation is in the repository:
 
-- `contracts/Launchcast.sol`: pooled YES/NO market creation, ERC-20 escrow, permissionless settlement, proportional claims, and fee accounting.
+- `contracts/Launchcast.sol`: pooled YES/NO market creation, ERC-20 escrow, permissionless settlement, proportional claims, and per-recipient fee accounting.
 - `contracts/TestUSD.sol`: faucet-only test token with no monetary value.
-- `script/Deploy.s.sol`: Foundry deployment script.
+- `script/Deploy.s.sol`: Foundry deployment script with a Robinhood Chain Testnet chain-ID guard.
 - `test/Launchcast.t.sol`: initial unit tests.
 - `foundry.toml`: compiler and project configuration.
 
-No contracts have been deployed. The Solidity code and tests still require a local Foundry compile/test run and an independent security review before deployment. The VibeVibe getter ABI and semantics also require live testnet verification before any real VibeVibe markets are created.
+No contracts have been deployed. The Solidity code and tests require passing CI/local Foundry checks and an independent security review before deployment. The VibeVibe getter ABI and semantics also require live testnet verification before any real VibeVibe markets are created.
 
 ## Local contract checks
 
