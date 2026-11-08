@@ -101,7 +101,7 @@ async function main(){
     const code=await client.getCode({address:factory.address});
     if(!code||code==="0x")throw new Error("No bytecode found at configured factory "+factory.address+". Re-check the registry before indexing.");
     const launchCount=await client.readContract({address:factory.address,abi:factoryReads,functionName:"launchCount",blockNumber:safeHead});
-    factoryChecks.push({generation:factory.generation,address:factory.address,bytecodePresent:true,onChainLaunchCount:launchCount.toString(),deploymentBlock:factory.deploymentBlock.toString()});
+    factoryChecks.push({generation:factory.generation,address:factory.address,bytecodePresent:true,onChainLaunchCount:launchCount.toString(),deploymentBlock:factory.deploymentBlock.toString(),observedLaunchEvents:null as number|null,launchCountMatchesEventCount:null as boolean|null});
   }
   const retained=snapshot.launches.filter(item=>item.blockNumber<Number(from));
   const discovered:Launch[]=[];
@@ -109,6 +109,11 @@ async function main(){
   const unique=new Map<string,Launch>();
   for(const item of [...retained,...discovered])unique.set(item.transactionHash+":"+item.logIndex,item);
   const launches=[...unique.values()].sort((a,b)=>b.blockNumber-a.blockNumber||b.logIndex-a.logIndex);
+  for(const check of factoryChecks){
+    const observed=launches.filter(item=>item.factory.toLowerCase()===check.address.toLowerCase()).length;
+    check.observedLaunchEvents=observed;
+    check.launchCountMatchesEventCount=fullHistory?BigInt(check.onChainLaunchCount)===BigInt(observed):null;
+  }
   if(fullHistory){
     for(const factory of factoryChecks){
       const ids=launches.filter(item=>item.factory.toLowerCase()===factory.address.toLowerCase()).map(item=>BigInt(item.launchId)).sort((a,b)=>a<b?-1:a>b?1:0);
