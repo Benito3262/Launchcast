@@ -183,12 +183,16 @@ export default function App() {
   setWalletModal(true);
   window.dispatchEvent(new Event("eip6963:requestProvider"));
  }
- async function connectWithProvider(provider:Eip1193Provider,label:string){
+ async function connectWithProvider(provider:Eip1193Provider,label:string,requestPermission=true){
   setError("");
   setBusy("Connecting wallet");
   try{
    const client=createWalletClient({chain,transport:custom(provider as never)});
-   const [user]=await client.requestAddresses();
+   const accounts=requestPermission
+    ? await client.requestAddresses()
+    : await provider.request({method:"eth_accounts"}) as Address[];
+   const user=accounts[0];
+   if(!user)throw new Error("The wallet did not return an account. Approve the connection in your wallet and try again.");
    const currentChain=await provider.request({method:"eth_chainId"}) as string;
    if(Number.parseInt(currentChain,16)!==46630){
     try{
@@ -212,7 +216,9 @@ export default function App() {
    const {default: EthereumProvider}=await import("@walletconnect/ethereum-provider");
    const provider=await EthereumProvider.init({projectId,chains:[46630],showQrModal:true,rpcMap:{46630:rpc},methods:["eth_sendTransaction","personal_sign","eth_signTypedData","eth_signTypedData_v4","eth_accounts","eth_requestAccounts","wallet_switchEthereumChain","wallet_addEthereumChain"],events:["chainChanged","accountsChanged"]});
    await provider.connect();
-   await connectWithProvider(provider as unknown as Eip1193Provider,"WalletConnect");
+   // WalletConnect's connect() already asks the wallet to authorize this site.
+   // Read the approved session accounts without issuing a second eth_requestAccounts prompt.
+   await connectWithProvider(provider as unknown as Eip1193Provider,"WalletConnect",false);
   }catch(e){setError(e instanceof Error?e.message:"WalletConnect connection failed.");}
   finally{setBusy("");}
  }
