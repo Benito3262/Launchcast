@@ -8,6 +8,7 @@ interface Vm {
     function warp(uint256 timestamp) external;
     function prank(address caller) external;
     function expectRevert() external;
+    function expectRevert(bytes4 revertData) external;
 }
 
 contract MockVibeVibeCurve {
