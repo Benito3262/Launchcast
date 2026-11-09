@@ -73,7 +73,7 @@ contract LaunchcastV2Test {
     TestUSD private stake;
     CurveIdentityMockV2 private curve;
     LaunchcastV2 private market;
-    address[3] private resolvers;
+    address private owner;
     uint64 private observationAt;
     uint64 private closeAt;
 
@@ -81,37 +81,34 @@ contract LaunchcastV2Test {
         vm.warp(1_000_000);
         stake = new TestUSD();
         curve = new CurveIdentityMockV2();
-        resolvers = [vm.addr(PK1), vm.addr(PK2), vm.addr(PK3)];
-        market = new LaunchcastV2(address(stake), feeWallet, 500, resolvers);
+        owner = vm.addr(PK1);
+        vm.prank(owner);
+        market = new LaunchcastV2(address(stake), feeWallet, 500);
         observationAt = uint64(block.timestamp + 12 hours);
         closeAt = uint64(block.timestamp + 11 hours);
         _fundAndApprove(alice);
         _fundAndApprove(bob);
     }
 
-    function testResolverCommitteeMustBeSeparateFromOwnerAndFeeRecipient() public {
-        address[3] memory resolverSet = [resolvers[0], feeWallet, resolvers[2]];
-        vm.expectRevert(LaunchcastV2.InvalidResolverSet.selector);
-        new LaunchcastV2(address(stake), feeWallet, 0, resolverSet);
+    function testExistingDeployerWalletIsTheSingleResolver() public {
+        require(market.owner() == owner, "owner wallet changed");
+        require(market.resolver() == owner, "deployer is not resolver");
     }
 
     function testOwnerCannotAlsoBeFeeRecipient() public {
         vm.expectRevert(LaunchcastV2.InvalidAddress.selector);
-        new LaunchcastV2(address(stake), address(this), 0, resolvers);
+        new LaunchcastV2(address(stake), address(this), 0);
     }
 
-    function testOwnershipCannotTransferToResolver() public {
-        vm.expectRevert(LaunchcastV2.InvalidAddress.selector);
-        market.transferOwnership(resolvers[0]);
-    }
-
-    function testFeeRecipientCannotBeChangedToResolver() public {
-        vm.expectRevert(LaunchcastV2.InvalidAddress.selector);
-        market.setFeeConfig(0, resolvers[0]);
+    function testResolverCanBeRotatedByExistingOwner() public {
+        vm.prank(owner);
+        market.setResolver(address(0x123456));
+        require(market.resolver() == address(0x123456), "resolver rotation failed");
     }
 
     function testCreatesIndependentTwelveAndTwentyFourHourMarkets() public {
         uint256 twelve = _create(LaunchcastV2.MarketType.Fdv12Hour, 1_000e18);
+        vm.prank(owner);
         uint256 twentyFour = market.createMarket(
             LaunchcastV2.MarketType.Fdv24Hour,
             address(stake),
@@ -295,8 +292,8 @@ contract LaunchcastV2Test {
 
     function testResolverRotationDoesNotChangeExistingMarketQuorum() public {
         uint256 id = _create(LaunchcastV2.MarketType.Fdv12Hour, 1_000e18);
-        address[3] memory nextSet = [address(0x111), address(0x222), address(0x333)];
-        market.setResolvers(nextSet);
+        vm.prank(owner);
+        market.setResolver(address(0x123456));
         vm.warp(observationAt);
         bytes32 evidence = keccak256("old resolver set");
         bytes[] memory sigs = _sign(id, true, 1_100e18, evidence, 150_000_000);
@@ -304,11 +301,11 @@ contract LaunchcastV2Test {
         require(market.getMarket(id).status == LaunchcastV2.MarketStatus.Challenged, "snapshot resolver set lost");
     }
 
-    function testRejectsQuorumSignedByNonResolver() public {
+    function testRejectsSignatureFromAnyWalletOtherThanExistingOwner() public {
         uint256 id = _create(LaunchcastV2.MarketType.Fdv12Hour, 1_000e18);
         vm.warp(observationAt);
         bytes32 evidence = keccak256("outsider signature");
-        bytes[] memory sigs = _signWith(id, true, 1_100e18, evidence, 150_000_000, PK1, 0xBAD);
+        bytes[] memory sigs = _signWith(id, true, 1_100e18, evidence, 150_000_000, 0xBAD, 0xBAD);
         vm.expectRevert(LaunchcastV2.InvalidSignatures.selector);
         market.submitAttestation(id, true, 150_000_000, observationAt, keccak256("block"), evidence, 1_100e18, sigs);
     }
@@ -340,6 +337,7 @@ contract LaunchcastV2Test {
 
     function testRejectsWrongTwelveHourObservationTimestamp() public {
         vm.expectRevert(LaunchcastV2.InvalidTime.selector);
+        vm.prank(owner);
         market.createMarket(
             LaunchcastV2.MarketType.Fdv12Hour,
             address(stake),
@@ -355,7 +353,7 @@ contract LaunchcastV2Test {
 
     function testStakeTokenCannotReenterAnyMarketMutationDuringTransfer() public {
         ReentrantStakeToken malicious = new ReentrantStakeToken();
-        LaunchcastV2 guarded = new LaunchcastV2(address(malicious), feeWallet, 0, resolvers);
+        LaunchcastV2 guarded = new LaunchcastV2(address(malicious), feeWallet, 0);
         uint256 id = guarded.createMarket(
             LaunchcastV2.MarketType.Graduation,
             address(stake),
@@ -416,6 +414,7 @@ contract LaunchcastV2Test {
     function _create(LaunchcastV2.MarketType kind, uint256 target) private returns (uint256) {
         curve.setComplete(kind != LaunchcastV2.MarketType.Graduation);
         address pair = kind == LaunchcastV2.MarketType.Graduation ? address(0) : address(stake);
+        vm.prank(owner);
         return market.createMarket(
             kind, address(stake), address(curve), pair, uint64(block.timestamp), observationAt, closeAt, 60, target
         );
@@ -437,7 +436,7 @@ contract LaunchcastV2Test {
         private
         returns (bytes[] memory)
     {
-        return _signWith(id, outcome, fdv, evidence, obsBlock, PK1, PK2);
+        return _signWith(id, outcome, fdv, evidence, obsBlock, PK1, PK1);
     }
 
     function _signWith(
@@ -454,16 +453,7 @@ contract LaunchcastV2Test {
         );
         // Callers can use a distinct block hash in the submitted payload; this helper signs the canonical test hash.
         (uint8 vA, bytes32 rA, bytes32 sA) = vm.sign(keyA, digest);
-        (uint8 vB, bytes32 rB, bytes32 sB) = vm.sign(keyB, digest);
-        address a = vm.addr(keyA);
-        address b = vm.addr(keyB);
-        signatures = new bytes[](2);
-        if (a < b) {
-            signatures[0] = abi.encodePacked(rA, sA, vA);
-            signatures[1] = abi.encodePacked(rB, sB, vB);
-        } else {
-            signatures[0] = abi.encodePacked(rB, sB, vB);
-            signatures[1] = abi.encodePacked(rA, sA, vA);
-        }
+        signatures = new bytes[](1);
+        signatures[0] = abi.encodePacked(rA, sA, vA);
     }
 }
