@@ -37,12 +37,12 @@ Market opening/closing, observation, challenge, finalization, and timeout rules 
 
 ## Remaining trust and oracle limitations
 
-- Two of three market-snapshotted resolver keys attest to the evidence; the contract does not independently prove historical V4 state or token supply.
+- One market-snapshotted owner/resolver wallet attests to the evidence; the contract does not independently prove historical V4 state or token supply.
 - The active V6 factory/event and V4 pool semantics have not been independently verified against full deployed source code.
 - Initial resolver signing and submission now rerun the same deterministic historical resolver against a second, different archive-provider host and require the same evidence hash and EIP-712 digest. This provides archive-provider diversity, not an independent resolver implementation. Challenge evidence replay is not yet implemented, and `SECONDARY_ARCHIVE_RPC_URL` must be configured with a validated second provider.
 - Historical `totalSupply()` support is provider-dependent; the resolver fails closed when unavailable.
 - Pair-denominated FDV is not USD FDV and does not imply liquidity or executable exit value.
-- Resolver key custody, signer independence, operational monitoring, and dispute response procedures are not yet production-ready.
+- The single owner/resolver key is a concentrated trust and custody risk; operational monitoring and incident response procedures are not yet production-ready.
 
 ## Claim and portfolio behaviour
 
@@ -51,8 +51,8 @@ Market opening/closing, observation, challenge, finalization, and timeout rules 
 
 ## Release gate
 
-Do not deploy for real-value use until an independent Solidity review, a second independent resolver implementation, archive-RPC evidence cross-checks, key-custody review, and full testnet lifecycle testing have passed. Testnet deployment should remain explicitly gated and separate from V1.
+Do not deploy for real-value use until an independent Solidity review, a second independent evidence implementation, archive-RPC evidence cross-checks, owner-key custody review, and full testnet lifecycle testing have passed. Testnet deployment should remain explicitly gated and separate from V1.
 
-## Role separation hardening
+## Single-wallet settlement authority
 
-The V2 constructor and role-update paths enforce that the three resolver addresses are nonzero and distinct, and that none is the contract owner, fee recipient, or stake-token contract. The owner cannot be rotated into the active resolver set, and the fee recipient cannot be changed to the owner or an active resolver. These checks reduce direct role concentration but do not prove that resolver keys are controlled by independent people or organizations; operational key custody still requires independent review.
+The V2 constructor configures the existing deployer/owner wallet as the sole resolver. Each market snapshots that address, and one EIP-712 signature from it authorises settlement. This matches the original Launchcast operating model and removes the unnecessary three-wallet setup. The trade-off is explicit: the owner wallet is a concentrated trust and key-custody risk. A compromised or misused key can sign an incorrect outcome, so archive evidence checks, monitoring, and independent security review remain release requirements.
