@@ -10,10 +10,6 @@ on:
         options:
           - "no"
           - "yes"
-      github_environment:
-        description: "Exact name of the GitHub Actions environment containing the deployment private key"
-        required: true
-        type: string
       fee_bps:
         description: "V2 fee in basis points (maximum 1000)"
         required: true
@@ -26,8 +22,6 @@ permissions:
 jobs:
   deploy:
     if: ${{ inputs.confirm_testnet_deployment == 'yes' }}
-    environment:
-      name: ${{ inputs.github_environment }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -42,12 +36,12 @@ jobs:
       - name: Verify deployment configuration and testnet
         env:
           RPC_URL: https://rpc.testnet.chain.robinhood.com
-          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY || secrets.PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
           STAKE_TOKEN_ADDRESS: "0x9557aade5c89fe39941b4f3a60cbac16e3f32143"
-          FEE_RECIPIENT: "0x54032f2d6adc9b327f5f2222d5ae1d6346a2cb14"
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
           FEE_BPS: ${{ inputs.fee_bps }}
         run: |
-          test -n "$PRIVATE_KEY" || (echo "Missing deployment private key. Expected LAUNCHCAST_TESTNET_PRIVATE_KEY or PRIVATE_KEY in the selected GitHub environment." && exit 1)
+          test -n "$PRIVATE_KEY" || (echo "Missing LAUNCHCAST_TESTNET_PRIVATE_KEY repository secret." && exit 1)
           [[ "$FEE_BPS" =~ ^[0-9]+$ ]] && test "$FEE_BPS" -le 1000 || (echo "FEE_BPS must be an integer from 0 to 1000." && exit 1)
           DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
           test "${FEE_RECIPIENT,,}" != "${DEPLOYER,,}" || (echo "Fee recipient cannot be the deployer/contract owner." && exit 1)
