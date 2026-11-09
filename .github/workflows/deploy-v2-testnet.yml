@@ -65,9 +65,9 @@ jobs:
         id: deploy_v2
         env:
           RPC_URL: https://rpc.testnet.chain.robinhood.com
-          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY || secrets.PRIVATE_KEY }}
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
           STAKE_TOKEN_ADDRESS: "0x9557aade5c89fe39941b4f3a60cbac16e3f32143"
-          FEE_RECIPIENT: "0x54032f2d6adc9b327f5f2222d5ae1d6346a2cb14"
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
           FEE_BPS: ${{ inputs.fee_bps }}
         run: |
           forge script script/DeployV2.s.sol:DeployLaunchcastV2 --rpc-url "$RPC_URL" --broadcast
