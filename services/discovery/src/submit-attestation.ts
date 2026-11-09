@@ -39,7 +39,7 @@ const chain = {
 const publicClient = createPublicClient({ chain, transport: http(rpcUrl, { timeout: 30_000, retryCount: 0 }) });
 const walletClient = createWalletClient({ account, chain, transport: http(rpcUrl, { timeout: 30_000, retryCount: 0 }) });
 const abi = parseAbi([
-  "function getMarket(uint256 marketId) view returns ((uint8 marketType,uint8 status,address token,address curve,address pairCurrency,uint64 launchAt,uint64 observationAt,uint64 closeAt,uint64 maxObservationLag,uint64 observationBlock,uint64 observationTimestamp,uint64 challengeEndsAt,bytes32 observationBlockHash,bytes32 evidenceHash,bytes32 challengeEvidenceHash,uint256 targetFdv,uint256 attestedFdv,uint128 yesPool,uint128 noPool,bool outcomeYes,uint16 feeBps,address feeRecipient,uint32 resolverVersion,address[3] resolvers))",
+  "function getMarket(uint256 marketId) view returns ((uint8 marketType,uint8 status,address token,address curve,address pairCurrency,uint64 launchAt,uint64 observationAt,uint64 closeAt,uint64 maxObservationLag,uint64 observationBlock,uint64 observationTimestamp,uint64 challengeEndsAt,bytes32 observationBlockHash,bytes32 evidenceHash,bytes32 challengeEvidenceHash,uint256 targetFdv,uint256 attestedFdv,uint128 yesPool,uint128 noPool,bool outcomeYes,uint16 feeBps,address feeRecipient,uint32 resolverVersion,address resolver))",
   "function attestationDigest(uint256 marketId,bool outcomeYes,uint64 observationBlock,uint64 observationTimestamp,bytes32 observationBlockHash,bytes32 evidenceHash,uint256 fdvValue) view returns (bytes32)",
   "function submitAttestation(uint256 marketId,bool outcomeYes,uint64 observationBlock,uint64 observationTimestamp,bytes32 observationBlockHash,bytes32 evidenceHash,uint256 fdvValue,bytes[] signatures)",
   "function challengeAttestation(uint256 marketId,bool outcomeYes,uint64 observationBlock,uint64 observationTimestamp,bytes32 observationBlockHash,bytes32 evidenceHash,uint256 fdvValue,bytes[] signatures)",
@@ -53,7 +53,7 @@ async function main() {
   if (a.chainId !== CHAIN_ID || a.verifyingContract.toLowerCase() !== contractAddress.toLowerCase()) throw new Error("Attestation is bound to a different chain or V2 contract.");
   if (!/^0x[0-9a-fA-F]{64}$/.test(a.evidenceHash) || !/^0x[0-9a-fA-F]{64}$/.test(a.observationBlockHash)) throw new Error("Evidence or block hash is malformed.");
   if (keccak256(stringToHex(JSON.stringify(payload.evidence))).toLowerCase() !== a.evidenceHash.toLowerCase()) throw new Error("Evidence JSON does not reproduce the signed evidence hash.");
-  if (payload.signatures.length !== 2 || payload.signatures.some(sig => !/^0x[0-9a-fA-F]{130}$/.test(sig))) throw new Error("Exactly two 65-byte resolver signatures are required.");
+  if (payload.signatures.length !== 1 || payload.signatures.some(sig => !/^0x[0-9a-fA-F]{130}$/.test(sig))) throw new Error("Exactly one 65-byte owner signature is required.");
 
   const marketId = BigInt(a.marketId);
   const observationBlock = BigInt(a.observationBlock);
@@ -119,13 +119,9 @@ async function main() {
     // a dedicated challenge-evidence replay remains a separate release gate.
     assertDistinctArchiveProviders(process.env.ARCHIVE_RPC_URL, process.env.SECONDARY_ARCHIVE_RPC_URL);
   }
-  const recovered = await Promise.all(payload.signatures.map(signature => recoverAddress({ hash: digest, signature })));
-  if (new Set(recovered.map(address => address.toLowerCase())).size !== 2) throw new Error("Resolver signatures must come from two distinct addresses.");
-  for (const signer of recovered) {
-    if (!market.resolvers.some(resolver => resolver.toLowerCase() === signer.toLowerCase())) throw new Error(`Signer ${signer} is not in the market's snapshotted resolver committee.`);
-  }
-  const ordered = recovered.map((signer, index) => ({ signer, signature: payload.signatures[index] })).sort((x, y) => x.signer.toLowerCase().localeCompare(y.signer.toLowerCase()));
-  const signatures = ordered.map(item => item.signature);
+  const signer = await recoverAddress({ hash: digest, signature: payload.signatures[0] });
+  if (signer.toLowerCase() !== market.resolver.toLowerCase()) throw new Error("Signature is not from the market's snapshotted owner wallet.");
+  const signatures = payload.signatures;
 
   const hash = payload.action === "submit"
     ? await walletClient.writeContract({ address: contractAddress, abi, functionName: "submitAttestation", args: [marketId, a.outcome, observationBlock, observationTimestamp, a.observationBlockHash, a.evidenceHash, fdvValue, signatures] })
@@ -133,6 +129,6 @@ async function main() {
   console.log(`Submitted ${payload.action} transaction: ${hash}`);
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   if (receipt.status !== "success") throw new Error(`Attestation transaction reverted: ${hash}`);
-  console.log(JSON.stringify({ status: "confirmed", action: payload.action, marketId: a.marketId, transactionHash: hash, blockNumber: receipt.blockNumber.toString(), resolverSigners: ordered.map(item => item.signer) }, null, 2));
+  console.log(JSON.stringify({ status: "confirmed", action: payload.action, marketId: a.marketId, transactionHash: hash, blockNumber: receipt.blockNumber.toString(), resolverSigner: signer }, null, 2));
 }
 main().catch(error => { console.error("Attestation relay failed closed."); console.error(error instanceof Error ? error.message : String(error)); process.exitCode = 1; });
