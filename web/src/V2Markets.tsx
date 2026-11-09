@@ -37,7 +37,7 @@ const abi = [
     { name: "attestedFdv", type: "uint256" }, { name: "yesPool", type: "uint128" },
     { name: "noPool", type: "uint128" }, { name: "outcomeYes", type: "bool" },
     { name: "feeBps", type: "uint16" }, { name: "feeRecipient", type: "address" },
-    { name: "resolverVersion", type: "uint32" }, { name: "resolvers", type: "address[3]" },
+    { name: "resolverVersion", type: "uint32" }, { name: "resolver", type: "address" },
   ] }] },
   { type: "function", name: "yesStake", stateMutability: "view", inputs: [{ name: "", type: "uint256" }, { name: "", type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "noStake", stateMutability: "view", inputs: [{ name: "", type: "uint256" }, { name: "", type: "address" }], outputs: [{ type: "uint256" }] },
@@ -60,7 +60,7 @@ type V2Market = {
   id: bigint; marketType: number; status: number; token: Address; curve: Address;
   pairCurrency: Address; launchAt: bigint; observationAt: bigint; closeAt: bigint;
   maxObservationLag: bigint; challengeEndsAt: bigint; observationBlock: bigint; observationTimestamp: bigint;
-  observationBlockHash: Hex; evidenceHash: Hex; challengeEvidenceHash: Hex; resolvers: readonly Address[];
+  observationBlockHash: Hex; evidenceHash: Hex; challengeEvidenceHash: Hex; resolver: Address;
   targetFdv: bigint; attestedFdv: bigint; yesPool: bigint; noPool: bigint; outcomeYes: boolean; feeBps: number; pairSymbol: string;
   graduationComplete: boolean | null;
 };
@@ -164,7 +164,7 @@ export default function V2Markets({ v2Address, account, wallet }: {
           closeAt: raw.closeAt, maxObservationLag: raw.maxObservationLag, challengeEndsAt: raw.challengeEndsAt,
           observationBlock: raw.observationBlock, observationTimestamp: raw.observationTimestamp,
           observationBlockHash: raw.observationBlockHash, evidenceHash: raw.evidenceHash,
-          challengeEvidenceHash: raw.challengeEvidenceHash, resolvers: raw.resolvers,
+          challengeEvidenceHash: raw.challengeEvidenceHash, resolver: raw.resolver,
           targetFdv: raw.targetFdv, attestedFdv: raw.attestedFdv, yesPool: raw.yesPool,
           noPool: raw.noPool, outcomeYes: raw.outcomeYes, feeBps: Number(raw.feeBps), graduationComplete,
           pairSymbol: raw.marketType === 0 ? "" : await publicClient.readContract({ address: raw.pairCurrency, abi: erc20Abi, functionName: "symbol" }).catch(() => short(raw.pairCurrency)),
@@ -379,7 +379,7 @@ export default function V2Markets({ v2Address, account, wallet }: {
         <div className="v2-dates"><span>Closes <b>{when(market.closeAt)}</b></span><span>Observation <b>{when(market.observationAt)}</b></span></div>
         {market.marketType !== 0 && <div className="v2-target">Target <b>{fmt(market.targetFdv, 18)} {market.pairSymbol}</b>{market.status >= 1 && <span> · Attested {fmt(market.attestedFdv, 18)} {market.pairSymbol}</span>}</div>}
         {market.observationBlock > 0n && <div className="v2-evidence"><span>Observation block <b>{market.observationBlock.toString()}</b></span><span>Observed at <b>{when(market.observationTimestamp)}</b></span><span>Resolver evidence <b>{short(market.evidenceHash)}</b></span>{market.status === 2 && <span>Conflicting evidence <b>{short(market.challengeEvidenceHash)}</b></span>}</div>}
-        <div className="v2-resolvers"><span>Market resolver committee</span>{market.resolvers.map((resolver, index) => <a key={resolver} href={"https://explorer.testnet.chain.robinhood.com/address/" + resolver} target="_blank" rel="noreferrer">R{index + 1} · {short(resolver)}</a>)}</div>
+        <div className="v2-resolvers"><span>Market resolver</span><a href={"https://explorer.testnet.chain.robinhood.com/address/" + market.resolver} target="_blank" rel="noreferrer">{short(market.resolver)}</a></div>
         <div className="v2-market-fee">Fee locked at {(market.feeBps / 100).toFixed(2)}% for this market</div>
         <div className="v2-pools"><div><span>YES pool</span><b>{fmt(market.yesPool, stakeDecimals)} {stakeSymbol}</b></div><div><span>NO pool</span><b>{fmt(market.noPool, stakeDecimals)} {stakeSymbol}</b></div><div><span>Total pooled</span><b>{fmt(total, stakeDecimals)} {stakeSymbol}</b></div></div>
         {hasPosition && <div className="v2-position">Your position · YES {fmt(position!.yes, stakeDecimals)} / NO {fmt(position!.no, stakeDecimals)} {stakeSymbol}{position!.claimed ? " · Claimed" : ""}</div>}
