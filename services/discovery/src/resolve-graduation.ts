@@ -44,7 +44,7 @@ async function main() {
   await assertV6FactoryCode(client);
   const market = await client.readContract({ address: v2Address, abi: v2Abi, functionName: "getMarket", args: [marketId] });
   if (market.marketType !== 0) throw new Error("This resolver handles Graduation markets only.");
-  if (market.status !== 0) throw new Error("Market is not Open.");
+  if (market.status !== 0 && market.status !== 1) throw new Error("Market must be Open or Challenged to produce independently verifiable evidence.");
   const latest = await client.getBlock({ blockTag: "latest" });
   if (latest.timestamp < market.observationAt) throw new Error("Graduation observation time has not arrived.");
   const observation = await findBlockAtOrBeforeTimestamp(latest.number, market.observationAt, async n => (await client.getBlock({ blockNumber: n })).timestamp);
