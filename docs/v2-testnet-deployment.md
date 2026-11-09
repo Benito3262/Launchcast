@@ -26,22 +26,19 @@ The public key is not needed by the deployment script because Foundry derives th
 
 The connected GitHub integration cannot enumerate repository environments or read secret names. Enter the exact environment name shown in **Settings → Environments** when dispatching the workflow. If the environment name is wrong or the private key secret is unavailable, the job fails during its preflight checks before broadcasting.
 
-## 3. Resolver addresses are a separate requirement
+## 3. Existing owner wallet is the resolver
 
-The workflow takes three public resolver EOA addresses as manual dispatch inputs. These must be three distinct addresses and must not equal the deployer, fee recipient, or stake-token contract. The workflow checks address format, distinctness, EOA bytecode, chain ID, deployer gas balance, stake-token bytecode, and fee limit before deployment.
+The V2 constructor automatically configures the same wallet that deploys the contract as its single authorised resolver. This is the existing Launchcast owner/deployer wallet already stored in the GitHub Environment secret. No new wallets, resolver addresses, or additional resolver secrets are required.
 
-**Do not enter the deployer's public address as a resolver.** The V2 contract explicitly rejects the owner/deployer address in the resolver committee. The three resolver addresses must each have independently controlled private signing keys, held securely by the resolver operators. The deployer's one private key and public address do not create a 2-of-3 resolver committee.
-
-Do not invent resolver addresses or use addresses for which no one controls the private keys. Resolver private keys are not needed by the contract deployment workflow itself, but they are required later to sign attestations. The independent resolver services and relayer must be configured and tested before markets rely on automated resolution.
+The market snapshots that wallet when it is created. One EIP-712 signature from that wallet authorises settlement. The resolver service uses the same private key under `RESOLVER_PRIVATE_KEY`; the attestation submitter uses that same key to sign and broadcast the settlement transaction. Keep the key in the existing secret manager/GitHub Environment. Never paste it into chat or commit it.
 
 ## 4. Run the deployment workflow
 
 1. Open **Actions → Deploy Launchcast V2 to Robinhood Testnet** on the reviewed V2 branch.
 2. Set `confirm_testnet_deployment` to `yes` only when ready to deploy.
-3. Enter the exact GitHub Environment name that contains the deployer private-key secret.
-4. Enter three distinct, independently controlled resolver EOA addresses.
-5. Set the fee in basis points. Use `0` on testnet unless a different fee has been explicitly approved.
-6. Run the workflow and wait for the Foundry tests and all preflight checks to pass.
+3. Enter the exact GitHub Environment name that contains the existing deployer private-key secret.
+4. Set the fee in basis points. Use `0` on testnet unless a different fee has been explicitly approved.
+5. Run the workflow and wait for the Foundry tests and all preflight checks to pass.
 
 The workflow deploys a separate V2 contract and reports its address in the Actions run summary. Do not point the frontend at V1 as a V2 contract.
 
@@ -61,8 +58,8 @@ Before opening V2 markets to users, complete one end-to-end test for each market
 2. Place YES and NO positions from separate wallets.
 3. Confirm that a graduation market stops accepting new positions as soon as the V6 curve reports `complete()`.
 4. Generate and independently cross-check the historical observation evidence against two archive providers.
-5. Submit a 2-of-3 attestation, test the challenge path, and finalize a valid result.
+5. Submit a single-owner-wallet attestation, exercise the correction/fail-safe path, and finalize a valid result.
 6. Claim winning payouts; test the no-winning-pool refund and void/dispute refunds.
 7. Reconcile all stake-token balances, pool accounting and fee balances against the on-chain contract.
 
-V2 is testnet-only and not audited. Do not enable real-value staking or treat the resolver committee as trustless.
+V2 is testnet-only and not audited. Do not enable real-value staking or treat the single owner wallet as trustless.
