@@ -271,7 +271,7 @@ export default function V2Markets({ v2Address, account, wallet }: {
       const close = BigInt(Math.floor(new Date(closeAt).getTime() / 1000));
       if (!launch || !observation || !close) throw new Error("Enter all three market dates.");
       const nowSeconds = BigInt(Math.floor(Date.now() / 1000));
-      if (launch >= observation || close <= nowSeconds || close >= observation) throw new Error("Launch must precede observation, and betting must close in the future before observation.");
+      if (launch > nowSeconds || launch >= observation || close <= nowSeconds || close >= observation) throw new Error("Launch must already have occurred, and betting must close in the future before observation.");
       const lag = BigInt(maxLag);
       const target = marketKind === 0 ? 0n : parseUnits(targetFdv, 18);
       if (marketKind !== 0 && target <= 0n) throw new Error("Enter a positive FDV threshold.");
@@ -284,7 +284,7 @@ export default function V2Markets({ v2Address, account, wallet }: {
       const launchLogs = await publicClient.getLogs({ address: V6_FACTORY, event: launchCreatedEvent, args: { token: tokenAddress }, fromBlock, toBlock: latestBlock.number });
       if (launchLogs.length !== 1) throw new Error(`Expected one canonical V6 LaunchCreated event for this token; found ${launchLogs.length}.`);
       const launchLog = launchLogs[0];
-      if (launchLog.blockNumber === null || launchLog.blockHash === null || launchLog.args.curve?.toLowerCase() !== curveAddress.toLowerCase()) throw new Error("The V6 launch event is incomplete or points to a different curve.");
+      if (launchLog.blockNumber === null || launchLog.blockHash === null || launchLog.transactionHash === null || launchLog.args.curve?.toLowerCase() !== curveAddress.toLowerCase()) throw new Error("The V6 launch event is incomplete or points to a different curve.");
       const eventBlock = await publicClient.getBlock({ blockNumber: launchLog.blockNumber });
       if (eventBlock.hash?.toLowerCase() !== launchLog.blockHash.toLowerCase() || eventBlock.timestamp !== launch) throw new Error("Launch time must exactly match the canonical V6 LaunchCreated block timestamp.");
       const [isV6, mappedCurve] = await Promise.all([
