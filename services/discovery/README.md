@@ -35,14 +35,14 @@ The resolver reads the market definition from the deployed LaunchcastV2 contract
 1. Requires Robinhood Chain Testnet (46630), an open FDV12/FDV24 market, and an observation time that has arrived.
 2. Finds exactly one matching active V6 factory `LaunchCreated` event, checks its canonical block hash and configured confirmation depth, and matches token/curve/pair/launch timestamp against the on-chain market.
 3. Runs the historical V4 observation probe. The probe selects the last block at or before the market observation time, requires a fresh V4 price event and historical `totalSupply()` at that block, and calculates pair-denominated FDV. It does not substitute current supply.
-4. Enforces the market's own `maxObservationLag`, hashes the complete evidence package, and creates the exact LaunchcastV2 EIP-712 digest. If `RESOLVER_PRIVATE_KEY` is present, it signs only when the derived address belongs to the market's snapshotted resolver set.
+4. Enforces the market's own `maxObservationLag`, hashes the complete evidence package, and creates the exact LaunchcastV2 EIP-712 digest. If `RESOLVER_PRIVATE_KEY` is present, it signs only when the derived address matches the market's snapshotted owner/resolver wallet.
 
 Run from this directory after V2 has been deployed and the environment is configured:
 
     npm install
     npm run resolve:fdv -- <market-id>
 
-Required environment: `LAUNCHCAST_V2_ADDRESS`. Optional: `RPC_URL`, `CONFIRMATIONS` (default 12), `LAUNCH_EVENT_LOOKBACK_BLOCKS` (default 5000), `MAX_PRICE_STALENESS_SECONDS` (default 3600), and `RESOLVER_PRIVATE_KEY`. A resolver instance signs for one configured resolver address; two independent resolver instances must independently produce signatures for the contract's 2-of-3 quorum. Do not put private keys in source control or chat.
+Required environment: `LAUNCHCAST_V2_ADDRESS`. Optional: `RPC_URL`, `CONFIRMATIONS` (default 12), `LAUNCH_EVENT_LOOKBACK_BLOCKS` (default 5000), `MAX_PRICE_STALENESS_SECONDS` (default 3600), and `RESOLVER_PRIVATE_KEY`. Use the existing Launchcast deployer/owner wallet key as `RESOLVER_PRIVATE_KEY`. No additional resolver wallets or resolver-address inputs are required. Do not put private keys in source control or chat.
 
 This is a first resolver implementation, not an oracle certification. It still relies on the V6 factory/event interpretation and historical RPC responses; it does not independently prove V4 source semantics, token supply mutation semantics, liquidity, or a USD price. The service intentionally fails closed when required history is unavailable. Do not use it for mainnet or real-value markets without independent audit, a second independent implementation, archive-RPC cross-checks, and operational key custody.
 
@@ -69,27 +69,27 @@ For a V2 Graduation market, run:
 npm run resolve:graduation -- <on-chain-market-id>
 ```
 
-The command selects the greatest canonical block timestamp less than or equal to the market's scheduled observation time, then reads the V6 factory registration, factory curve mapping, and curve `complete()` flag at that same historical block. It independently verifies the canonical `LaunchCreated` event and requires the market's configured maximum observation lag. It emits a deterministic evidence hash and EIP-712 digest; with `RESOLVER_PRIVATE_KEY`, it emits one resolver signature only if the key belongs to the market's snapshotted resolver set. One signature is not a quorum: two independent resolver signatures over the same digest are required by V2. The command does not submit an attestation transaction or settle a market.
+The command selects the greatest canonical block timestamp less than or equal to the market's scheduled observation time, then reads the V6 factory registration, factory curve mapping, and curve `complete()` flag at that same historical block. It independently verifies the canonical `LaunchCreated` event and requires the market's configured maximum observation lag. It emits a deterministic evidence hash and EIP-712 digest; with `RESOLVER_PRIVATE_KEY`, it emits one resolver signature only if the key matches the market's snapshotted owner/resolver wallet. One signature from the existing owner/resolver wallet is sufficient for V2 settlement. The command does not submit an attestation transaction or settle a market.
 
 The resolver uses `ARCHIVE_RPC_URL` first, then `RPC_URL`, then the public testnet endpoint. Historical-state access and an independent second-provider evidence cross-check remain mandatory release gates. Do not enable real-value staking based on a successful single-provider probe.
 
 
-## Relaying a 2-of-3 attestation
+## Submitting a single-wallet attestation
 
-Each independent resolver should produce its own output for the same market and canonical evidence. Both outputs must have the same `digest`, `evidenceHash`, and attestation fields, while the `signer` values must be different members of the market's snapshotted resolver set. Do not copy a signature from a different digest.
+The existing Launchcast owner/deployer wallet signs the canonical evidence and is the only authorised resolver for markets created under that resolver snapshot. Do not use a different wallet or collect additional signatures.
 
-Create an `attestation-bundle.json` containing the first output's `attestation` and `evidence`, plus both outputs' signatures:
+Create an `attestation-bundle.json` containing the resolver output's `attestation`, `evidence`, and single signature:
 
 ```json
 {
   "action": "submit",
   "attestation": { "...": "copy the complete attestation object from a resolver output" },
   "evidence": { "...": "copy the complete evidence object from that same output" },
-  "signatures": ["0x<resolver-one-signature>", "0x<resolver-two-signature>"]
+  "signatures": ["0x<existing-owner-wallet-signature>"]
 }
 ```
 
-Use `"challenge"` instead of `"submit"` only for a conflicting quorum during the challenge window. Keep the evidence JSON byte-for-byte structurally identical to the resolver output; the relay command recomputes its hash.
+Use `"challenge"` instead of `"submit"` only when the same authorised owner wallet is correcting a previously submitted result during the challenge window. Keep the evidence JSON byte-for-byte structurally identical to the resolver output; the relay command recomputes its hash.
 
 With `LAUNCHCAST_V2_ADDRESS` and a funded `RELAYER_PRIVATE_KEY` set in the local environment, run:
 
@@ -97,6 +97,6 @@ With `LAUNCHCAST_V2_ADDRESS` and a funded `RELAYER_PRIVATE_KEY` set in the local
 npm run submit:attestation -- ./attestation-bundle.json
 ```
 
-The relayer independently checks chain ID, contract address, evidence hash, resolver version, canonical observation block hash and timestamp, market timing/status, FDV threshold (where applicable), the on-chain EIP-712 digest, two distinct snapshotted resolver signers, and signature ordering before broadcasting. It waits for a successful receipt. The relayer key is only a transaction sender; it is not a resolver key and cannot manufacture a quorum.
+The relayer independently checks chain ID, contract address, evidence hash, resolver version, canonical observation block hash and timestamp, market timing/status, FDV threshold (where applicable), the on-chain EIP-712 digest, the single snapshotted owner/resolver signer before broadcasting. It waits for a successful receipt. The same existing owner wallet signs and broadcasts the settlement transaction; no separate relayer wallet is required.
 
-Never commit private keys, signed evidence bundles containing sensitive operational data, or environment files to the repository. The relay is not usable until V2 is deployed and two independent resolver keys are securely operated.
+Never commit private keys, signed evidence bundles containing sensitive operational data, or environment files to the repository. The relay is not usable until V2 is deployed and the existing owner wallet key is securely configured in the local secret manager.
