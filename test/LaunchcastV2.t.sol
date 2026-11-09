@@ -388,6 +388,7 @@ contract LaunchcastV2Test {
     function testGraduationMarketCannotBeCreatedForCompletedCurve() public {
         curve.setComplete(true);
         vm.expectRevert(LaunchcastV2.InvalidMarket.selector);
+        vm.prank(owner);
         market.createMarket(
             LaunchcastV2.MarketType.Graduation, address(stake), address(curve), address(0),
             uint64(block.timestamp), observationAt, closeAt, 60, 0
@@ -397,6 +398,7 @@ contract LaunchcastV2Test {
     function testFdvMarketRequiresCompletedCurve() public {
         curve.setComplete(false);
         vm.expectRevert(LaunchcastV2.InvalidMarket.selector);
+        vm.prank(owner);
         market.createMarket(
             LaunchcastV2.MarketType.Fdv12Hour, address(stake), address(curve), address(stake),
             uint64(block.timestamp), observationAt, closeAt, 60, 1_000e18
