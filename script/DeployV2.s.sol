@@ -27,11 +27,8 @@ contract DeployLaunchcastV2 {
         uint256 feeBpsRaw = vm.envUint("FEE_BPS");
         if (feeBpsRaw > 1_000) revert InvalidFee();
         uint16 feeBps = uint16(feeBpsRaw);
-        address[3] memory resolvers =
-            [vm.envAddress("RESOLVER_1"), vm.envAddress("RESOLVER_2"), vm.envAddress("RESOLVER_3")];
-
         vm.startBroadcast(privateKey);
-        LaunchcastV2 launchcastV2 = new LaunchcastV2(stakeToken, feeRecipient, feeBps, resolvers);
+        LaunchcastV2 launchcastV2 = new LaunchcastV2(stakeToken, feeRecipient, feeBps);
         vm.stopBroadcast();
 
         launchcastV2;
