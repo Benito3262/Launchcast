@@ -145,7 +145,12 @@ export default function App() {
   }catch(e){setError(e instanceof Error?e.message:"Unable to read Launchcast contracts.");}
  },[account,configured]);
 
- useEffect(()=>{void refresh();},[refresh]);
+ useEffect(()=>{
+  void refresh();
+  // Re-check on-chain graduation and expiry so the board does not rely on a stale page load.
+  const interval=window.setInterval(()=>{void refresh();},60_000);
+  return()=>window.clearInterval(interval);
+ },[refresh]);
  useEffect(()=>{
   if(/^0x[a-fA-F0-9]{40}$/.test(configuredEnvAddress))return;
   let active=true;
