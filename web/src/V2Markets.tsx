@@ -317,7 +317,7 @@ export default function V2Markets({ v2Address, account, wallet }: {
 
   if (!configured) return <section className="v2-panel">
     <div className="eyebrow">LAUNCHCAST V2</div><h1>V2 markets are being prepared</h1>
-    <p>The V2 market interface is now part of the app. It will activate when the separately audited V2 contract is deployed and its address is added to the public deployment configuration.</p>
+    <p>The V2 market interface is now part of the app. It will activate after the separate testnet contract is deployed and its address is set as VITE_LAUNCHCAST_V2_ADDRESS in Vercel, or added to /data/deployment.json.</p>
     <p className="v2-warning">Your current deployment is V1. V1 markets and funds are separate; this page will not send V2 transactions to the V1 contract.</p>
   </section>;
 
