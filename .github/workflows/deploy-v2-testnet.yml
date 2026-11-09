@@ -1,0 +1,85 @@
+name: Deploy Launchcast V2 to Robinhood Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_deployment:
+        description: "Explicitly confirm a separate V2 deployment to Robinhood Chain Testnet (chain ID 46630)"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+      fee_bps:
+        description: "V2 fee in basis points (maximum 1000)"
+        required: true
+        default: "0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_testnet_deployment == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Verify deployment configuration and testnet
+        env:
+          RPC_URL: https://rpc.testnet.chain.robinhood.com
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
+          STAKE_TOKEN_ADDRESS: "0x9557aade5c89fe39941b4f3a60cbac16e3f32143"
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
+          FEE_BPS: ${{ inputs.fee_bps }}
+        run: |
+          test -n "$PRIVATE_KEY" || (echo "Missing LAUNCHCAST_TESTNET_PRIVATE_KEY repository secret." && exit 1)
+          [[ "$FEE_BPS" =~ ^[0-9]+$ ]] && test "$FEE_BPS" -le 1000 || (echo "FEE_BPS must be an integer from 0 to 1000." && exit 1)
+          DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
+          test "${FEE_RECIPIENT,,}" != "${DEPLOYER,,}" || (echo "Fee recipient cannot be the deployer/contract owner." && exit 1)
+          test "${FEE_RECIPIENT,,}" != "${STAKE_TOKEN_ADDRESS,,}" || (echo "Fee recipient cannot be the stake token contract." && exit 1)
+          BALANCE="$(cast balance "$DEPLOYER" --rpc-url "$RPC_URL")"
+          CHAIN_ID="$(cast chain-id --rpc-url "$RPC_URL")"
+          echo "Deployer: $DEPLOYER"
+          echo "Testnet ETH balance (wei): $BALANCE"
+          echo "Connected chain ID: $CHAIN_ID"
+          test "$CHAIN_ID" = "46630" || (echo "Refusing deployment: wrong chain." && exit 1)
+          test "$BALANCE" != "0" || (echo "Deployer has no testnet ETH for gas." && exit 1)
+          CODE="$(cast code "$STAKE_TOKEN_ADDRESS" --rpc-url "$RPC_URL")"
+          test "$CODE" != "0x" || (echo "Stake token has no code on testnet." && exit 1)
+
+      - name: Build and test all contracts
+        run: |
+          forge build
+          forge test -vv
+
+      - name: Deploy V2 separately
+        id: deploy_v2
+        env:
+          RPC_URL: https://rpc.testnet.chain.robinhood.com
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
+          STAKE_TOKEN_ADDRESS: "0x9557aade5c89fe39941b4f3a60cbac16e3f32143"
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
+          FEE_BPS: ${{ inputs.fee_bps }}
+        run: |
+          forge script script/DeployV2.s.sol:DeployLaunchcastV2 --rpc-url "$RPC_URL" --broadcast
+          DEPLOYMENT_FILE="broadcast/DeployV2.s.sol/46630/run-latest.json"
+          test -f "$DEPLOYMENT_FILE" || (echo "Foundry deployment record was not created." && exit 1)
+          ADDRESS="$(jq -r '[.transactions[] | select(.transactionType == "CREATE" and .contractName == "LaunchcastV2") | .contractAddress] | last // empty' "$DEPLOYMENT_FILE")"
+          [[ "$ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "Could not extract the deployed LaunchcastV2 address." && exit 1)
+          echo "contract_address=$ADDRESS" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Launchcast V2 deployed to Robinhood Testnet"
+            echo ""
+            echo "- Chain ID: 46630"
+            echo "- Contract: `$ADDRESS`"
+            echo "- Set this as Vercel environment variable `VITE_LAUNCHCAST_V2_ADDRESS` to activate the V2 tab."
+          } >> "$GITHUB_STEP_SUMMARY"
