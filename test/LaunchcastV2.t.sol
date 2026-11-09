@@ -187,7 +187,7 @@ contract LaunchcastV2Test {
             id, true, 150_000_000, observationAt, keccak256("block"), firstEvidence, 1_200e18, first
         );
         bytes32 secondEvidence = keccak256("conflicting evidence");
-        bytes[] memory second = _signWith(id, false, 900e18, secondEvidence, 150_000_001, PK2, PK3);
+        bytes[] memory second = _signWith(id, false, 900e18, secondEvidence, 150_000_001, PK1, PK1);
         market.challengeAttestation(
             id, false, 150_000_001, observationAt, keccak256("block"), secondEvidence, 900e18, second
         );
