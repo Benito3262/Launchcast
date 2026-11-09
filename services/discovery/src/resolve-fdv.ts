@@ -128,7 +128,7 @@ async function main() {
     const account = privateKeyToAccount(privateKey);
     signer = account.address;
     signature = await account.signTypedData({ domain, types, primaryType: "MarketAttestation", message });
-    if (!(market as unknown as { resolver: Address }).resolver.toLowerCase() !== signer.toLowerCase()) {
+    if ((market as unknown as { resolver: Address }).resolver.toLowerCase() !== signer.toLowerCase()) {
       throw new Error("Configured signer is not the market's snapshotted owner wallet.");
     }
   }
