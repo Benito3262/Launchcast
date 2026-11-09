@@ -4,7 +4,7 @@ Status: internal engineering review only. This is not an independent audit, form
 
 ## Automated checks
 
-- Foundry: 54 Solidity tests pass (33 V1 regression tests and 21 V2 tests).
+- Foundry: 57 Solidity tests pass (33 V1 regression tests and 24 V2 tests) on the single-wallet resolver revision.
 - Discovery service: TypeScript typecheck passes and 25 unit tests pass.
 - Web app: TypeScript check and production Vite build pass with V2 market filters, estimated payouts, claim gating, and wallet portfolio history.
 - `forge fmt --check contracts/LaunchcastV2.sol test/LaunchcastV2.t.sol` and `git diff --check` pass. The repository-wide formatter check still reports pre-existing formatting differences in the V1 contract.
