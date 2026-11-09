@@ -75,6 +75,7 @@ jobs:
           forge test -vv
 
       - name: Deploy V2 separately
+        id: deploy_v2
         env:
           RPC_URL: https://rpc.testnet.chain.robinhood.com
           PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
@@ -84,4 +85,17 @@ jobs:
           RESOLVER_2: ${{ secrets.LAUNCHCAST_V2_RESOLVER_2 }}
           RESOLVER_3: ${{ secrets.LAUNCHCAST_V2_RESOLVER_3 }}
           FEE_BPS: ${{ inputs.fee_bps }}
-        run: forge script script/DeployV2.s.sol:DeployLaunchcastV2 --rpc-url "$RPC_URL" --broadcast
+        run: |
+          forge script script/DeployV2.s.sol:DeployLaunchcastV2 --rpc-url "$RPC_URL" --broadcast
+          DEPLOYMENT_FILE="broadcast/DeployV2.s.sol/46630/run-latest.json"
+          test -f "$DEPLOYMENT_FILE" || (echo "Foundry deployment record was not created." && exit 1)
+          ADDRESS="$(jq -r '[.transactions[] | select(.transactionType == "CREATE" and .contractName == "LaunchcastV2") | .contractAddress] | last // empty' "$DEPLOYMENT_FILE")"
+          [[ "$ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "Could not extract the deployed LaunchcastV2 address." && exit 1)
+          echo "contract_address=$ADDRESS" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Launchcast V2 deployed to Robinhood Testnet"
+            echo ""
+            echo "- Chain ID: 46630"
+            echo "- Contract: `$ADDRESS`"
+            echo "- Set this as Vercel environment variable `VITE_LAUNCHCAST_V2_ADDRESS` to activate the V2 tab."
+          } >> "$GITHUB_STEP_SUMMARY"
