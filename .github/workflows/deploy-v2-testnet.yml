@@ -10,6 +10,22 @@ on:
         options:
           - "no"
           - "yes"
+      github_environment:
+        description: "Exact name of the GitHub Actions environment containing the deployment private key"
+        required: true
+        type: string
+      resolver_1:
+        description: "Public EOA address for resolver 1 (must have independently controlled signing key)"
+        required: true
+        type: string
+      resolver_2:
+        description: "Public EOA address for resolver 2 (must have independently controlled signing key)"
+        required: true
+        type: string
+      resolver_3:
+        description: "Public EOA address for resolver 3 (must have independently controlled signing key)"
+        required: true
+        type: string
       fee_bps:
         description: "V2 fee in basis points (maximum 1000)"
         required: true
@@ -22,6 +38,8 @@ permissions:
 jobs:
   deploy:
     if: ${{ inputs.confirm_testnet_deployment == 'yes' }}
+    environment:
+      name: ${{ inputs.github_environment }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -36,24 +54,20 @@ jobs:
       - name: Verify deployment configuration and testnet
         env:
           RPC_URL: https://rpc.testnet.chain.robinhood.com
-          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
-          STAKE_TOKEN_ADDRESS: ${{ secrets.LAUNCHCAST_STAKE_TOKEN_ADDRESS }}
-          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
-          RESOLVER_1: ${{ secrets.LAUNCHCAST_V2_RESOLVER_1 }}
-          RESOLVER_2: ${{ secrets.LAUNCHCAST_V2_RESOLVER_2 }}
-          RESOLVER_3: ${{ secrets.LAUNCHCAST_V2_RESOLVER_3 }}
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY || secrets.PRIVATE_KEY }}
+          STAKE_TOKEN_ADDRESS: "0x9557aade5c89fe39941b4f3a60cbac16e3f32143"
+          FEE_RECIPIENT: "0x54032f2d6adc9b327f5f2222d5ae1d6346a2cb14"
+          RESOLVER_1: ${{ inputs.resolver_1 }}
+          RESOLVER_2: ${{ inputs.resolver_2 }}
+          RESOLVER_3: ${{ inputs.resolver_3 }}
           FEE_BPS: ${{ inputs.fee_bps }}
         run: |
-          test -n "$PRIVATE_KEY" || (echo "Missing LAUNCHCAST_TESTNET_PRIVATE_KEY secret." && exit 1)
-          test -n "$STAKE_TOKEN_ADDRESS" || (echo "Missing LAUNCHCAST_STAKE_TOKEN_ADDRESS secret." && exit 1)
-          test -n "$FEE_RECIPIENT" || (echo "Missing LAUNCHCAST_FEE_RECIPIENT secret." && exit 1)
+          test -n "$PRIVATE_KEY" || (echo "Missing deployment private key. Expected LAUNCHCAST_TESTNET_PRIVATE_KEY or PRIVATE_KEY in the selected GitHub environment." && exit 1)
           for name in RESOLVER_1 RESOLVER_2 RESOLVER_3; do
             value="${!name}"
             [[ "$value" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "$name must be a valid EVM address." && exit 1)
             test "${value,,}" != "0x0000000000000000000000000000000000000000" || (echo "$name cannot be zero." && exit 1)
           done
-          [[ "$STAKE_TOKEN_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "Invalid stake token address." && exit 1)
-          [[ "$FEE_RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "Invalid fee recipient address." && exit 1)
           test "${RESOLVER_1,,}" != "${RESOLVER_2,,}" || (echo "Resolver addresses must be distinct." && exit 1)
           test "${RESOLVER_1,,}" != "${RESOLVER_3,,}" || (echo "Resolver addresses must be distinct." && exit 1)
           test "${RESOLVER_2,,}" != "${RESOLVER_3,,}" || (echo "Resolver addresses must be distinct." && exit 1)
@@ -88,12 +102,12 @@ jobs:
         id: deploy_v2
         env:
           RPC_URL: https://rpc.testnet.chain.robinhood.com
-          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
-          STAKE_TOKEN_ADDRESS: ${{ secrets.LAUNCHCAST_STAKE_TOKEN_ADDRESS }}
-          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
-          RESOLVER_1: ${{ secrets.LAUNCHCAST_V2_RESOLVER_1 }}
-          RESOLVER_2: ${{ secrets.LAUNCHCAST_V2_RESOLVER_2 }}
-          RESOLVER_3: ${{ secrets.LAUNCHCAST_V2_RESOLVER_3 }}
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY || secrets.PRIVATE_KEY }}
+          STAKE_TOKEN_ADDRESS: "0x9557aade5c89fe39941b4f3a60cbac16e3f32143"
+          FEE_RECIPIENT: "0x54032f2d6adc9b327f5f2222d5ae1d6346a2cb14"
+          RESOLVER_1: ${{ inputs.resolver_1 }}
+          RESOLVER_2: ${{ inputs.resolver_2 }}
+          RESOLVER_3: ${{ inputs.resolver_3 }}
           FEE_BPS: ${{ inputs.fee_bps }}
         run: |
           forge script script/DeployV2.s.sol:DeployLaunchcastV2 --rpc-url "$RPC_URL" --broadcast
