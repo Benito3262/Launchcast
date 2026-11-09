@@ -27,8 +27,8 @@ if (!file) throw new Error("Usage: npm run submit:attestation -- <attestation-bu
 const configuredAddress = process.env.LAUNCHCAST_V2_ADDRESS ?? "";
 if (!/^0x[0-9a-fA-F]{40}$/.test(configuredAddress)) throw new Error("Set LAUNCHCAST_V2_ADDRESS to the deployed V2 contract.");
 const contractAddress = configuredAddress as Address;
-const privateKey = process.env.RELAYER_PRIVATE_KEY as Hex | undefined;
-if (!privateKey || !/^0x[0-9a-fA-F]{64}$/.test(privateKey)) throw new Error("Set RELAYER_PRIVATE_KEY for the permissionless attestation relayer.");
+const privateKey = process.env.RESOLVER_PRIVATE_KEY as Hex | undefined;
+if (!privateKey || !/^0x[0-9a-fA-F]{64}$/.test(privateKey)) throw new Error("Set RESOLVER_PRIVATE_KEY to the existing Launchcast owner wallet key; it signs and submits the settlement.");
 const account = privateKeyToAccount(privateKey);
 const rpcUrl = process.env.ARCHIVE_RPC_URL || process.env.RPC_URL || DEFAULT_RPC;
 const chain = {
