@@ -14,7 +14,7 @@ const configuredV2Address = process.env.LAUNCHCAST_V2_ADDRESS;
 if (!configuredV2Address || !/^0x[0-9a-fA-F]{40}$/.test(configuredV2Address)) throw new Error("Set LAUNCHCAST_V2_ADDRESS to the deployed V2 contract.");
 const v2Address = configuredV2Address as Address;
 const v2Abi = parseAbi([
-  "function getMarket(uint256 marketId) view returns ((uint8 marketType,uint8 status,address token,address curve,address pairCurrency,uint64 launchAt,uint64 observationAt,uint64 closeAt,uint64 maxObservationLag,uint64 observationBlock,uint64 observationTimestamp,uint64 challengeEndsAt,bytes32 observationBlockHash,bytes32 evidenceHash,bytes32 challengeEvidenceHash,uint256 targetFdv,uint256 attestedFdv,uint128 yesPool,uint128 noPool,bool outcomeYes,uint16 feeBps,address feeRecipient,uint32 resolverVersion,address[3] resolvers))",
+  "function getMarket(uint256 marketId) view returns ((uint8 marketType,uint8 status,address token,address curve,address pairCurrency,uint64 launchAt,uint64 observationAt,uint64 closeAt,uint64 maxObservationLag,uint64 observationBlock,uint64 observationTimestamp,uint64 challengeEndsAt,bytes32 observationBlockHash,bytes32 evidenceHash,bytes32 challengeEvidenceHash,uint256 targetFdv,uint256 attestedFdv,uint128 yesPool,uint128 noPool,bool outcomeYes,uint16 feeBps,address feeRecipient,uint32 resolverVersion,address resolver))",
 ]);
 const factory = V6_FACTORY_ADDRESS;
 const launchCreated = parseAbiItem("event LaunchCreated(uint256 indexed launchId,address indexed launcher,address indexed token,address curve,string name,string symbol,string metadataURI,address pairCurrency,uint16 taxBps,uint64 packedWeights,address projectTreasury,uint256 targetPairUnits,uint256 netPersonal,uint256 giftNetTotal,bytes32 giftRoot,uint256 giftCount)");
@@ -128,8 +128,8 @@ async function main() {
     const account = privateKeyToAccount(privateKey);
     signer = account.address;
     signature = await account.signTypedData({ domain, types, primaryType: "MarketAttestation", message });
-    if (!(market as unknown as { resolvers: Address[] }).resolvers.some(address => address.toLowerCase() === signer!.toLowerCase())) {
-      throw new Error("Configured signer is not in this market's snapshotted resolver set.");
+    if (!(market as unknown as { resolver: Address }).resolver.toLowerCase() !== signer.toLowerCase()) {
+      throw new Error("Configured signer is not the market's snapshotted owner wallet.");
     }
   }
   console.log(JSON.stringify({ status: signature ? "signed_evidence_ready" : "unsigned_evidence_ready", evidenceHash, digest, signer, signature,
