@@ -91,7 +91,7 @@ Create an `attestation-bundle.json` containing the resolver output's `attestatio
 
 Use `"challenge"` instead of `"submit"` only when the same authorised owner wallet is correcting a previously submitted result during the challenge window. Keep the evidence JSON byte-for-byte structurally identical to the resolver output; the relay command recomputes its hash.
 
-With `LAUNCHCAST_V2_ADDRESS` and a funded `RELAYER_PRIVATE_KEY` set in the local environment, run:
+With `LAUNCHCAST_V2_ADDRESS` and the existing owner wallet configured as `RESOLVER_PRIVATE_KEY` in the local secret manager, run:
 
 ```bash
 npm run submit:attestation -- ./attestation-bundle.json
