@@ -65,6 +65,14 @@ type V2Market = {
   graduationComplete: boolean | null;
 };
 type Position = { yes: bigint; no: bigint; claimed: boolean };
+type DiscoveredV6Launch = {
+  token: string; curve: string; name: string; symbol: string; launchId: string;
+  createdAt: string; complete: boolean; pairCurrency: string; pairSymbol: string;
+};
+const toLocalDateTimeInput = (date: Date) => {
+  const offset = date.getTimezoneOffset();
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+};
 const V6_FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
 const launchCreatedEvent = parseAbiItem("event LaunchCreated(uint256 indexed launchId,address indexed launcher,address indexed token,address curve,string name,string symbol,string metadataURI,address pairCurrency,uint16 taxBps,uint64 packedWeights,address projectTreasury,uint256 targetPairUnits,uint256 netPersonal,uint256 giftNetTotal,bytes32 giftRoot,uint256 giftCount)");
 const factoryAbi = [
@@ -111,6 +119,8 @@ export default function V2Markets({ v2Address, account, wallet }: {
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [discoveredLaunches, setDiscoveredLaunches] = useState<DiscoveredV6Launch[]>([]);
+  const [selectedLaunch, setSelectedLaunch] = useState("");
   const [marketType, setMarketType] = useState("1");
   const [token, setToken] = useState("");
   const [curve, setCurve] = useState("");
@@ -177,6 +187,34 @@ export default function V2Markets({ v2Address, account, wallet }: {
       setError(cause instanceof Error ? cause.message : "Unable to read Launchcast V2.");
     }
   }, [account, configured, contractAddress]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/data/vibevibe-v6-tokens.json")
+      .then(response => { if (!response.ok) throw new Error("V6 launch feed unavailable"); return response.json(); })
+      .then((data: { tokens?: DiscoveredV6Launch[] }) => {
+        if (!cancelled) setDiscoveredLaunches((data.tokens || []).filter(item => !item.complete && Number(item.createdAt) * 1000 < Date.now()));
+      })
+      .catch(() => { if (!cancelled) setDiscoveredLaunches([]); });
+    return () => { cancelled = true; };
+  }, []);
+
+  function selectDiscoveredLaunch(launchId: string) {
+    setSelectedLaunch(launchId);
+    const launch = discoveredLaunches.find(item => item.launchId === launchId);
+    if (!launch) return;
+    const now = Date.now();
+    setMarketType("0");
+    setToken(launch.token);
+    setCurve(launch.curve);
+    setPairCurrency(launch.pairCurrency);
+    setLaunchAt(toLocalDateTimeInput(new Date(Number(launch.createdAt) * 1000)));
+    setObservationAt(toLocalDateTimeInput(new Date(now + 7 * 24 * 60 * 60 * 1000)));
+    setCloseAt(toLocalDateTimeInput(new Date(now + 24 * 60 * 60 * 1000)));
+    setTargetFdv("");
+    setError("");
+    setNotice(launch.name + " (" + launch.symbol + ") selected. Review the betting close and observation times before creating the market.");
+  }
 
   useEffect(() => {
     void refresh();
@@ -360,6 +398,14 @@ export default function V2Markets({ v2Address, account, wallet }: {
     })}</div>}</> : <section className="v2-portfolio"><div className="v2-portfolio-heading"><div><span className="eyebrow">YOUR ON-CHAIN RECORD</span><h2>Position history</h2><p>Every position is read from the V2 contract for the connected wallet.</p></div><div className="v2-history-counts"><span><b>{wins}</b> Wins</span><span><b>{losses}</b> Losses</span><span><b>{claimableCount}</b> Claimable</span></div></div>{!account ? <div className="empty"><h3>Connect your wallet</h3><p>Your open positions and settled history will appear here.</p></div> : portfolio.length === 0 ? <div className="empty"><h3>No positions yet</h3><p>When you back a YES or NO outcome, it will be recorded here.</p></div> : <div className="v2-market-list">{portfolio.map(market => { const position = positions[market.id.toString()]; const outcome = positionOutcome(market, position); const claimable = isClaimable(market, position); const winningPool = market.outcomeYes ? market.yesPool : market.noPool; const losingPool = market.outcomeYes ? market.noPool : market.yesPool; const winningStake = market.outcomeYes ? position.yes : position.no; const fee = losingPool * BigInt(market.feeBps) / 10000n; const payout = market.status === 4 || (market.status === 3 && winningPool === 0n) ? position.yes + position.no : market.status === 3 && winningStake > 0n ? winningStake + (losingPool - fee) * winningStake / winningPool : 0n; const net = payout - position.yes - position.no; return <article className="v2-market-card v2-history-card" key={market.id.toString()}><div className="v2-card-top"><span className={"v2-status status-" + market.status}>{statusName(market.status)}</span><span>#{market.id.toString()} · {typeName(market.marketType)}</span></div><h3>{market.marketType === 0 ? "Graduation market" : "FDV target · " + fmt(market.targetFdv, 18) + " " + market.pairSymbol}</h3><div className="v2-position">YES {fmt(position.yes, stakeDecimals)} / NO {fmt(position.no, stakeDecimals)} {stakeSymbol}</div><div className="v2-history-result"><span>Outcome <b>{outcome}</b></span><span>Total staked <b>{fmt(position.yes + position.no, stakeDecimals)} {stakeSymbol}</b></span><span>{market.status === 4 || (market.status === 3 && winningPool === 0n) ? "Refund" : market.status === 3 ? "Payout" : "Payout"} <b>{isSettled(market) ? fmt(payout, stakeDecimals) + " " + stakeSymbol : "Pending"}</b></span><span>Net result <b>{isSettled(market) ? (net > 0n ? "+" : "") + fmt(net, stakeDecimals) + " " + stakeSymbol : "Pending"}</b></span></div><p className="v2-muted">{position.claimed ? "Payout/refund processed on-chain." : claimable ? "Your winnings or refund are ready to claim." : market.status === 3 && outcome === "LOST" ? "This position lost. No claim is available." : "Waiting for market resolution."}</p>{claimable && account && <button className="v2-claim" disabled={Boolean(busy)} onClick={() => void transact(market.status === 4 || (market.status === 3 && winningPool === 0n) ? "Refund V2 position" : "Claim V2 winnings", (client, user) => client.writeContract({ account: user, chain, address: contractAddress, abi, functionName: "claim", args: [market.id] }))}>{market.status === 4 || (market.status === 3 && winningPool === 0n) ? "Claim stake refund" : "Claim winnings"}</button>}</article>; })}</div>}</section>}
     {isOwner && section === "markets" && <section className="v2-create">
       <span className="eyebrow">OWNER CONTROLS</span><h2>Create a V2 market</h2>
+      <label>Choose a verified recent V6 launch
+        <select value={selectedLaunch} onChange={event => selectDiscoveredLaunch(event.target.value)}>
+          <option value="">Select a launch to fill the market details</option>
+          {discoveredLaunches.map(item => <option key={item.launchId} value={item.launchId}>#{item.launchId} · {item.name} ({item.symbol})</option>)}
+        </select>
+      </label>
+      <p>{discoveredLaunches.length} ungraduated launches available from the latest verified V6 feed. Selecting one fills its on-chain token, curve, pair currency and launch time.</p>
+
       <label>Market type<select value={marketType} onChange={event => setMarketType(event.target.value)}><option value="0">Graduation</option><option value="1">FDV after 12 hours</option><option value="2">FDV after 24 hours</option></select></label>
       <label>Token contract<input value={token} onChange={event => setToken(event.target.value)} placeholder="0x…"/></label>
       <label>Curve contract<input value={curve} onChange={event => setCurve(event.target.value)} placeholder="0x…"/></label>
