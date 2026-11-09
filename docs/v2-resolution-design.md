@@ -1,6 +1,6 @@
 # Launchcast V2 resolution design
 
-Status: proposed implementation baseline for testnet. V1 is immutable and remains untouched.
+Status: first testnet contract implementation and test suite are in progress. V1 is immutable and remains untouched. The contract is not audited and is not deployed.
 
 ## 1. Market types
 
@@ -52,6 +52,8 @@ This is a disclosed trust model, not trustless price verification. A malicious 2
 
 - V1's exact-transfer ERC-20 checks, pooled YES/NO accounting, fee cap and reentrancy protection are retained.
 - A resolved market pays winning participants proportionally from the losing pool after the disclosed fee.
+- Graduation markets stop accepting new bets as soon as the V6 curve reports `complete()`, even if the scheduled close time is later. This is a conservative early-close guard; the resolver still determines the final graduation result from canonical V4 pool evidence at the observation time.
+- If a resolved market has no winning-side pool, every participant can reclaim their own YES and NO stakes. No fee is charged in this case.
 - A void/disputed market refunds each participant's YES and NO stakes.
 - Claims are permissionless per user but only the position owner can receive the payout.
 - No Sell action is exposed until a real exit mechanism exists. A cosmetic sell button is prohibited. A future sell feature needs transferable position shares or an explicitly tested early-exit accounting model.
@@ -78,3 +80,12 @@ V2 must not be deployed with live staking until all of these pass:
 5. Frontend labels and evidence links that show the exact proposition, pair denomination, target time, resolver set, status and refund conditions.
 
 No V2 contract deployment, market staking, or production settlement is authorized by this design document alone.
+
+
+## 7. First contract implementation
+
+`contracts/LaunchcastV2.sol` implements the three market types, fixed launch-relative 12h/24h observation timestamps, YES/NO pooled staking, exact-transfer ERC-20 checks, per-market fee snapshots, EIP-712 attestations, a snapshotted 2-of-3 resolver committee, a 30-minute challenge window, conflict-to-void behavior, 24-hour attestation timeout, permissionless finalization, and participant refunds for void markets.
+
+`test/LaunchcastV2.t.sol` covers market timing, FDV threshold consistency, resolver signatures and rotation, replay protection, conflicting attestations, timeout refunds, empty winning pools, proportional payouts and fees. The deployment script is separate from V1 and requires the existing stake token address plus three resolver addresses.
+
+This is an initial implementation, not a security audit. The contract cannot independently prove the resolver's historical block, V4 event, pool liquidity, launch event, or historical supply claims; it relies on the signed resolver evidence hash. Before deployment, the resolver service must build and independently cross-check the full evidence package, and the deployment parameters and resolver key custody must be reviewed.

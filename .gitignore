@@ -11,3 +11,6 @@ lib/
 services/discovery/data/
 
 web/.cache/
+
+# JavaScript dependencies
+**/node_modules/

@@ -1,0 +1,87 @@
+name: Deploy Launchcast V2 to Robinhood Testnet
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_testnet_deployment:
+        description: "Explicitly confirm a separate V2 deployment to Robinhood Chain Testnet (chain ID 46630)"
+        required: true
+        type: choice
+        options:
+          - "no"
+          - "yes"
+      fee_bps:
+        description: "V2 fee in basis points (maximum 1000)"
+        required: true
+        default: "0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ inputs.confirm_testnet_deployment == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Verify deployment configuration and testnet
+        env:
+          RPC_URL: https://rpc.testnet.chain.robinhood.com
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
+          STAKE_TOKEN_ADDRESS: ${{ secrets.LAUNCHCAST_STAKE_TOKEN_ADDRESS }}
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
+          RESOLVER_1: ${{ secrets.LAUNCHCAST_V2_RESOLVER_1 }}
+          RESOLVER_2: ${{ secrets.LAUNCHCAST_V2_RESOLVER_2 }}
+          RESOLVER_3: ${{ secrets.LAUNCHCAST_V2_RESOLVER_3 }}
+          FEE_BPS: ${{ inputs.fee_bps }}
+        run: |
+          test -n "$PRIVATE_KEY" || (echo "Missing LAUNCHCAST_TESTNET_PRIVATE_KEY secret." && exit 1)
+          test -n "$STAKE_TOKEN_ADDRESS" || (echo "Missing LAUNCHCAST_STAKE_TOKEN_ADDRESS secret." && exit 1)
+          test -n "$FEE_RECIPIENT" || (echo "Missing LAUNCHCAST_FEE_RECIPIENT secret." && exit 1)
+          for name in RESOLVER_1 RESOLVER_2 RESOLVER_3; do
+            value="${!name}"
+            [[ "$value" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "$name must be a valid EVM address." && exit 1)
+            test "${value,,}" != "0x0000000000000000000000000000000000000000" || (echo "$name cannot be zero." && exit 1)
+          done
+          [[ "$STAKE_TOKEN_ADDRESS" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "Invalid stake token address." && exit 1)
+          [[ "$FEE_RECIPIENT" =~ ^0x[a-fA-F0-9]{40}$ ]] || (echo "Invalid fee recipient address." && exit 1)
+          test "${RESOLVER_1,,}" != "${RESOLVER_2,,}" || (echo "Resolver addresses must be distinct." && exit 1)
+          test "${RESOLVER_1,,}" != "${RESOLVER_3,,}" || (echo "Resolver addresses must be distinct." && exit 1)
+          test "${RESOLVER_2,,}" != "${RESOLVER_3,,}" || (echo "Resolver addresses must be distinct." && exit 1)
+          [[ "$FEE_BPS" =~ ^[0-9]+$ ]] && test "$FEE_BPS" -le 1000 || (echo "FEE_BPS must be an integer from 0 to 1000." && exit 1)
+          DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
+          BALANCE="$(cast balance "$DEPLOYER" --rpc-url "$RPC_URL")"
+          CHAIN_ID="$(cast chain-id --rpc-url "$RPC_URL")"
+          echo "Deployer: $DEPLOYER"
+          echo "Testnet ETH balance (wei): $BALANCE"
+          echo "Connected chain ID: $CHAIN_ID"
+          test "$CHAIN_ID" = "46630" || (echo "Refusing deployment: wrong chain." && exit 1)
+          test "$BALANCE" != "0" || (echo "Deployer has no testnet ETH for gas." && exit 1)
+          CODE="$(cast code "$STAKE_TOKEN_ADDRESS" --rpc-url "$RPC_URL")"
+          test "$CODE" != "0x" || (echo "Stake token has no code on testnet." && exit 1)
+
+      - name: Build and test all contracts
+        run: |
+          forge build
+          forge test -vv
+
+      - name: Deploy V2 separately
+        env:
+          RPC_URL: https://rpc.testnet.chain.robinhood.com
+          PRIVATE_KEY: ${{ secrets.LAUNCHCAST_TESTNET_PRIVATE_KEY }}
+          STAKE_TOKEN_ADDRESS: ${{ secrets.LAUNCHCAST_STAKE_TOKEN_ADDRESS }}
+          FEE_RECIPIENT: ${{ secrets.LAUNCHCAST_FEE_RECIPIENT }}
+          RESOLVER_1: ${{ secrets.LAUNCHCAST_V2_RESOLVER_1 }}
+          RESOLVER_2: ${{ secrets.LAUNCHCAST_V2_RESOLVER_2 }}
+          RESOLVER_3: ${{ secrets.LAUNCHCAST_V2_RESOLVER_3 }}
+          FEE_BPS: ${{ inputs.fee_bps }}
+        run: forge script script/DeployV2.s.sol:DeployLaunchcastV2 --rpc-url "$RPC_URL" --broadcast

@@ -11,7 +11,10 @@
     "discover:v6": "tsx src/index.ts --v6-only",
     "probe:curve-observation": "tsx src/probe-curve-observation.ts",
     "probe:v4-observation": "tsx src/probe-v4-observation.ts",
-    "reconstruct:v6-supply": "tsx src/reconstruct-v6-supply.ts"
+    "reconstruct:v6-supply": "tsx src/reconstruct-v6-supply.ts",
+    "resolve:fdv": "tsx src/resolve-fdv.ts",
+    "resolve:graduation": "tsx src/resolve-graduation.ts",
+    "submit:attestation": "tsx src/submit-attestation.ts"
   },
   "dependencies": {
     "viem": "^2.21.54"

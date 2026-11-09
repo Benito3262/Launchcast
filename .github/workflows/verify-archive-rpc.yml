@@ -1,0 +1,88 @@
+name: Verify Launchcast archive RPC observations
+
+on:
+  workflow_dispatch:
+    inputs:
+      dsdf_token:
+        description: "DSDF token address from the previously validated sample"
+        required: true
+        type: string
+      dsdf_observation_timestamp:
+        description: "DSDF target observation Unix timestamp (seconds)"
+        required: true
+        type: string
+      vibegold_token:
+        description: "VIBEGOLD token address from the previously validated sample"
+        required: true
+        type: string
+      vibegold_observation_timestamp:
+        description: "VIBEGOLD target observation Unix timestamp (seconds)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  archive-probes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out resolver code
+        uses: actions/checkout@v4
+        with:
+          ref: launchcast-v2-sync
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: services/discovery/package-lock.json
+
+      - name: Install discovery dependencies
+        working-directory: services/discovery
+        run: npm ci
+
+      - name: Validate required archive secrets
+        env:
+          ALCHEMY_ARCHIVE_RPC_URL: ${{ secrets.ARCHIVE_RPC_URL }}
+          SECOND_ARCHIVE_RPC_URL: ${{ secrets.SECOND_ARCHIVE_RPC_URL }}
+        run: |
+          test -n "$ALCHEMY_ARCHIVE_RPC_URL" || { echo "Missing ARCHIVE_RPC_URL repository secret"; exit 1; }
+          test -n "$SECOND_ARCHIVE_RPC_URL" || { echo "Missing SECOND_ARCHIVE_RPC_URL repository secret"; exit 1; }
+
+      - name: Probe DSDF and VIBEGOLD using Alchemy archive
+        working-directory: services/discovery
+        env:
+          ARCHIVE_RPC_URL: ${{ secrets.ARCHIVE_RPC_URL }}
+          DSDF_TOKEN: ${{ inputs.dsdf_token }}
+          DSDF_TIME: ${{ inputs.dsdf_observation_timestamp }}
+          VIBEGOLD_TOKEN: ${{ inputs.vibegold_token }}
+          VIBEGOLD_TIME: ${{ inputs.vibegold_observation_timestamp }}
+        run: |
+          mkdir -p probe-results/alchemy
+          npm run probe:v4-observation -- "$DSDF_TIME" "$DSDF_TOKEN" | tee probe-results/alchemy/dsdf.json
+          npm run probe:v4-observation -- "$VIBEGOLD_TIME" "$VIBEGOLD_TOKEN" | tee probe-results/alchemy/vibegold.json
+
+      - name: Probe DSDF and VIBEGOLD using independent archive
+        working-directory: services/discovery
+        env:
+          ARCHIVE_RPC_URL: ${{ secrets.SECOND_ARCHIVE_RPC_URL }}
+          DSDF_TOKEN: ${{ inputs.dsdf_token }}
+          DSDF_TIME: ${{ inputs.dsdf_observation_timestamp }}
+          VIBEGOLD_TOKEN: ${{ inputs.vibegold_token }}
+          VIBEGOLD_TIME: ${{ inputs.vibegold_observation_timestamp }}
+        run: |
+          mkdir -p probe-results/second-provider
+          npm run probe:v4-observation -- "$DSDF_TIME" "$DSDF_TOKEN" | tee probe-results/second-provider/dsdf.json
+          npm run probe:v4-observation -- "$VIBEGOLD_TIME" "$VIBEGOLD_TOKEN" | tee probe-results/second-provider/vibegold.json
+
+      - name: Upload read-only probe evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: launchcast-archive-probe-evidence
+          path: services/discovery/probe-results/
+          if-no-files-found: warn
+          retention-days: 14

@@ -6,14 +6,14 @@ import {
   type Address,
   type Log,
 } from "viem";
-import { DEFAULT_RPC } from "./config.js";
+import { assertV6FactoryCode, DEFAULT_RPC, V6_FACTORY_ADDRESS } from "./config.js";
 import {
   assertCompleteBlockCoverage,
   reconstructSupplyFromTransferEvents,
   type SupplyTransferEvent,
 } from "./observation.js";
 
-const FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
+const FACTORY = V6_FACTORY_ADDRESS;
 const FACTORY_CHUNK_BLOCKS = 9_000_000n;
 const TOKEN_CHUNK_BLOCKS = 5_000n;
 const rpcUrl = process.env.RPC_URL || DEFAULT_RPC;
