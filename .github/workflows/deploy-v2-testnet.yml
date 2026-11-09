@@ -66,6 +66,8 @@ jobs:
             test "${value,,}" != "${DEPLOYER,,}" || (echo "$name cannot be the deployer/contract owner." && exit 1)
             test "${value,,}" != "${FEE_RECIPIENT,,}" || (echo "$name cannot be the fee recipient." && exit 1)
             test "${value,,}" != "${STAKE_TOKEN_ADDRESS,,}" || (echo "$name cannot be the stake token contract." && exit 1)
+            RESOLVER_CODE="$(cast code "$value" --rpc-url "$RPC_URL")"
+            test "$RESOLVER_CODE" = "0x" || (echo "$name must be an EOA signing address, not a contract wallet." && exit 1)
           done
           BALANCE="$(cast balance "$DEPLOYER" --rpc-url "$RPC_URL")"
           CHAIN_ID="$(cast chain-id --rpc-url "$RPC_URL")"
