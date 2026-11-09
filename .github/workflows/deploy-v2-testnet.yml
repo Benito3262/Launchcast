@@ -59,6 +59,14 @@ jobs:
           test "${RESOLVER_2,,}" != "${RESOLVER_3,,}" || (echo "Resolver addresses must be distinct." && exit 1)
           [[ "$FEE_BPS" =~ ^[0-9]+$ ]] && test "$FEE_BPS" -le 1000 || (echo "FEE_BPS must be an integer from 0 to 1000." && exit 1)
           DEPLOYER="$(cast wallet address --private-key "$PRIVATE_KEY")"
+          test "${FEE_RECIPIENT,,}" != "${DEPLOYER,,}" || (echo "Fee recipient cannot be the deployer/contract owner." && exit 1)
+          test "${FEE_RECIPIENT,,}" != "${STAKE_TOKEN_ADDRESS,,}" || (echo "Fee recipient cannot be the stake token contract." && exit 1)
+          for name in RESOLVER_1 RESOLVER_2 RESOLVER_3; do
+            value="${!name}"
+            test "${value,,}" != "${DEPLOYER,,}" || (echo "$name cannot be the deployer/contract owner." && exit 1)
+            test "${value,,}" != "${FEE_RECIPIENT,,}" || (echo "$name cannot be the fee recipient." && exit 1)
+            test "${value,,}" != "${STAKE_TOKEN_ADDRESS,,}" || (echo "$name cannot be the stake token contract." && exit 1)
+          done
           BALANCE="$(cast balance "$DEPLOYER" --rpc-url "$RPC_URL")"
           CHAIN_ID="$(cast chain-id --rpc-url "$RPC_URL")"
           echo "Deployer: $DEPLOYER"
