@@ -19,6 +19,7 @@ const chain = defineChain({
   blockExplorers: { default: { name: "Robinhood Explorer", url: "https://explorer.testnet.chain.robinhood.com" } }, testnet: true,
 });
 const configuredEnvAddress = import.meta.env.VITE_LAUNCHCAST_ADDRESS || "";
+const configuredEnvV2Address = import.meta.env.VITE_LAUNCHCAST_V2_ADDRESS || "";
 const abi = [
  {type:"function",name:"owner",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
  {type:"function",name:"stakeToken",stateMutability:"view",inputs:[],outputs:[{type:"address"}]},
@@ -75,7 +76,7 @@ const scaledUnits = (value:string|null|undefined) => {
 
 export default function App() {
  const [address,setAddress]=useState<Address>((configuredEnvAddress || "") as Address);
- const [v2Address,setV2Address]=useState("");
+ const [v2Address,setV2Address]=useState(configuredEnvV2Address);
  const [account,setAccount]=useState<Address>();
  const [wallet,setWallet]=useState<WalletClient>();
  const [activeProvider,setActiveProvider]=useState<Eip1193Provider>();
@@ -158,7 +159,7 @@ export default function App() {
   fetch("/data/deployment.json").then(r=>{if(!r.ok)throw new Error("No Launchcast deployment config");return r.json();})
    .then((data:DeploymentConfig)=>{
     if(active&&!/^0x[a-fA-F0-9]{40}$/.test(configuredEnvAddress)&&data.chainId===46630&&/^0x[a-fA-F0-9]{40}$/.test(data.launchcastAddress))setAddress(getAddress(data.launchcastAddress));
-    if(active&&data.chainId===46630&&/^0x[a-fA-F0-9]{40}$/.test(data.launchcastV2Address||""))setV2Address(getAddress(data.launchcastV2Address!));
+    if(active&&!/^0x[a-fA-F0-9]{40}$/.test(configuredEnvV2Address)&&data.chainId===46630&&/^0x[a-fA-F0-9]{40}$/.test(data.launchcastV2Address||""))setV2Address(getAddress(data.launchcastV2Address!));
    }).catch(()=>{});
   return()=>{active=false;};
  },[]);
