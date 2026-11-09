@@ -24,7 +24,6 @@ contract LaunchcastV2 {
     error InvalidStatus();
     error InvalidEvidence();
     error InvalidSignatures();
-    error InvalidResolverSet();
     error NothingToClaim();
     error AlreadyClaimed();
     error TransferFailed();
@@ -82,7 +81,7 @@ contract LaunchcastV2 {
         uint16 feeBps;
         address feeRecipient;
         uint32 resolverVersion;
-        address[3] resolvers;
+        address resolver;
     }
 
     address public owner;
@@ -94,7 +93,7 @@ contract LaunchcastV2 {
     uint256 public accruedFees;
     uint256 private lockState = 1;
 
-    address[3] private activeResolvers;
+    address public resolver;
     mapping(uint256 => Market) private markets;
     mapping(uint256 => mapping(address => uint256)) public yesStake;
     mapping(uint256 => mapping(address => uint256)) public noStake;
@@ -103,7 +102,7 @@ contract LaunchcastV2 {
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event FeeConfigUpdated(uint16 feeBps, address indexed feeRecipient);
-    event ResolverSetUpdated(uint32 indexed version, address resolver0, address resolver1, address resolver2);
+    event ResolverUpdated(address indexed resolver, uint32 version);
     event MarketCreated(
         uint256 indexed marketId,
         MarketType indexed marketType,
@@ -143,23 +142,22 @@ contract LaunchcastV2 {
         lockState = 1;
     }
 
-    constructor(address stakeToken_, address feeRecipient_, uint16 feeBps_, address[3] memory resolvers_) {
+    constructor(address stakeToken_, address feeRecipient_, uint16 feeBps_) {
         if (stakeToken_ == address(0) || stakeToken_.code.length == 0) revert InvalidAddress();
         if (
             feeRecipient_ == address(0) || feeRecipient_ == address(this) || feeRecipient_ == msg.sender
                 || feeRecipient_ == stakeToken_
         ) revert InvalidAddress();
         if (feeBps_ > MAX_FEE_BPS) revert InvalidFee();
-        _validateResolverSet(resolvers_, msg.sender, feeRecipient_, stakeToken_);
         owner = msg.sender;
         stakeToken = IERC20LaunchcastV2(stakeToken_);
         feeRecipient = feeRecipient_;
         feeBps = feeBps_;
-        activeResolvers = resolvers_;
+        resolver = msg.sender;
         resolverVersion = 1;
         emit OwnershipTransferred(address(0), msg.sender);
         emit FeeConfigUpdated(feeBps_, feeRecipient_);
-        emit ResolverSetUpdated(1, resolvers_[0], resolvers_[1], resolvers_[2]);
+        emit ResolverUpdated(msg.sender, 1);
     }
 
     function createMarket(
@@ -209,7 +207,7 @@ contract LaunchcastV2 {
         market.feeBps = feeBps;
         market.feeRecipient = feeRecipient;
         market.resolverVersion = resolverVersion;
-        market.resolvers = activeResolvers;
+        market.resolver = resolver;
 
         emit MarketCreated(
             marketId, marketType, token, curve, pairCurrency, launchAt, observationAt, closeAt, targetFdv
@@ -391,38 +389,35 @@ contract LaunchcastV2 {
         if (newFeeBps > MAX_FEE_BPS) revert InvalidFee();
         if (
             newFeeRecipient == address(0) || newFeeRecipient == address(this) || newFeeRecipient == owner
-                || newFeeRecipient == address(stakeToken) || _isActiveResolver(newFeeRecipient)
+                || newFeeRecipient == address(stakeToken)
         ) revert InvalidAddress();
         feeBps = newFeeBps;
         feeRecipient = newFeeRecipient;
         emit FeeConfigUpdated(newFeeBps, newFeeRecipient);
     }
 
-    function setResolvers(address[3] calldata newResolvers) external nonReentrant onlyOwner {
-        _validateResolverSet(newResolvers, owner, feeRecipient, address(stakeToken));
-        activeResolvers = newResolvers;
-        unchecked {
-            ++resolverVersion;
-        }
-        emit ResolverSetUpdated(resolverVersion, newResolvers[0], newResolvers[1], newResolvers[2]);
+    function setResolver(address newResolver) external nonReentrant onlyOwner {
+        if (newResolver == address(0) || newResolver == address(this) || newResolver == feeRecipient || newResolver == address(stakeToken) || newResolver.code.length != 0) revert InvalidAddress();
+        resolver = newResolver;
+        unchecked { ++resolverVersion; }
+        emit ResolverUpdated(newResolver, resolverVersion);
     }
 
     function transferOwnership(address newOwner) external nonReentrant onlyOwner {
         if (
             newOwner == address(0) || newOwner == address(this) || newOwner == feeRecipient
-                || newOwner == address(stakeToken) || _isActiveResolver(newOwner)
+                || newOwner == address(stakeToken)
         ) revert InvalidAddress();
         address previousOwner = owner;
         owner = newOwner;
+        resolver = newOwner;
+        unchecked { ++resolverVersion; }
+        emit ResolverUpdated(newOwner, resolverVersion);
         emit OwnershipTransferred(previousOwner, newOwner);
     }
 
     function getMarket(uint256 marketId) external view returns (Market memory) {
         return _getMarket(marketId);
-    }
-
-    function getActiveResolvers() external view returns (address[3] memory) {
-        return activeResolvers;
     }
 
     function attestationDigest(
@@ -468,7 +463,7 @@ contract LaunchcastV2 {
         } else if (outcomeYes != (fdvValue >= market.targetFdv)) {
             revert InvalidEvidence();
         }
-        if (signatures.length != 2) revert InvalidSignatures();
+        if (signatures.length != 1) revert InvalidSignatures();
         bytes32 digest = _attestationDigest(
             marketId,
             outcomeYes,
@@ -479,11 +474,8 @@ contract LaunchcastV2 {
             fdvValue,
             market.resolverVersion
         );
-        address signer0 = _recover(digest, signatures[0]);
-        address signer1 = _recover(digest, signatures[1]);
-        if (signer0 >= signer1 || !_isMarketResolver(market, signer0) || !_isMarketResolver(market, signer1)) {
-            revert InvalidSignatures();
-        }
+        address signer = _recover(digest, signatures[0]);
+        if (signer != market.resolver) revert InvalidSignatures();
     }
 
     function _attestationDigest(
@@ -537,29 +529,6 @@ contract LaunchcastV2 {
         );
         if (!success || data.length < 32) revert InvalidMarket();
         complete_ = abi.decode(data, (bool));
-    }
-
-    function _isMarketResolver(Market storage market, address signer) internal view returns (bool) {
-        return signer == market.resolvers[0] || signer == market.resolvers[1] || signer == market.resolvers[2];
-    }
-
-    function _isActiveResolver(address candidate) internal view returns (bool) {
-        return candidate == activeResolvers[0] || candidate == activeResolvers[1] || candidate == activeResolvers[2];
-    }
-
-    function _validateResolverSet(
-        address[3] memory resolvers,
-        address owner_,
-        address feeRecipient_,
-        address stakeToken_
-    ) internal pure {
-        if (
-            resolvers[0] == address(0) || resolvers[1] == address(0) || resolvers[2] == address(0)
-                || resolvers[0] == resolvers[1] || resolvers[0] == resolvers[2] || resolvers[1] == resolvers[2]
-                || resolvers[0] == owner_ || resolvers[1] == owner_ || resolvers[2] == owner_
-                || resolvers[0] == feeRecipient_ || resolvers[1] == feeRecipient_ || resolvers[2] == feeRecipient_
-                || resolvers[0] == stakeToken_ || resolvers[1] == stakeToken_ || resolvers[2] == stakeToken_
-        ) revert InvalidResolverSet();
     }
 
     function _getMarket(uint256 marketId) internal view returns (Market storage market) {
