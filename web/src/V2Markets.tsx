@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./v2.css";
 import {
-  createPublicClient, defineChain, formatUnits, http, parseUnits,
+  createPublicClient, defineChain, formatUnits, http, parseAbiItem, parseUnits,
   type Address, type Hex, type WalletClient,
 } from "viem";
 
@@ -66,6 +66,7 @@ type V2Market = {
 };
 type Position = { yes: bigint; no: bigint; claimed: boolean };
 const V6_FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
+const launchCreatedEvent = parseAbiItem("event LaunchCreated(uint256 indexed launchId,address indexed launcher,address indexed token,address curve,string name,string symbol,string metadataURI,address pairCurrency,uint16 taxBps,uint64 packedWeights,address projectTreasury,uint256 targetPairUnits,uint256 netPersonal,uint256 giftNetTotal,bytes32 giftRoot,uint256 giftCount)");
 const factoryAbi = [
   { type: "function", name: "isV6Token", stateMutability: "view", inputs: [{ name: "token", type: "address" }], outputs: [{ type: "bool" }] },
   { type: "function", name: "curveOf", stateMutability: "view", inputs: [{ name: "token", type: "address" }], outputs: [{ type: "address" }] },
@@ -78,6 +79,18 @@ const tokenValidationAbi = [
   { type: "function", name: "pairCurrency", stateMutability: "view", inputs: [], outputs: [{ type: "address" }] },
 ] as const;
 const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+async function findBlockAtOrBeforeTimestamp(target: bigint) {
+  const latest = await publicClient.getBlock({ blockTag: "latest" });
+  if (latest.timestamp < target) throw new Error("Launch time is later than the latest confirmed chain block.");
+  let low = 0n, high = latest.number;
+  while (low < high) {
+    const middle = (low + high + 1n) / 2n;
+    const block = await publicClient.getBlock({ blockNumber: middle });
+    if (block.timestamp <= target) low = middle;
+    else high = middle - 1n;
+  }
+  return publicClient.getBlock({ blockNumber: low });
+}
 const short = (value: string) => value.slice(0, 6) + "…" + value.slice(-4);
 const fmt = (value: bigint, decimals: number) => Number(formatUnits(value, decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 });
 const when = (value: bigint) => new Date(Number(value) * 1000).toLocaleString();
@@ -257,10 +270,23 @@ export default function V2Markets({ v2Address, account, wallet }: {
       const observation = BigInt(Math.floor(new Date(observationAt).getTime() / 1000));
       const close = BigInt(Math.floor(new Date(closeAt).getTime() / 1000));
       if (!launch || !observation || !close) throw new Error("Enter all three market dates.");
+      const nowSeconds = BigInt(Math.floor(Date.now() / 1000));
+      if (launch >= observation || close <= nowSeconds || close >= observation) throw new Error("Launch must precede observation, and betting must close in the future before observation.");
       const lag = BigInt(maxLag);
       const target = marketKind === 0 ? 0n : parseUnits(targetFdv, 18);
       if (marketKind !== 0 && target <= 0n) throw new Error("Enter a positive FDV threshold.");
       if (lag <= 0n || lag > 600n) throw new Error("Observation lag must be between 1 and 600 seconds.");
+      // Verify the launch timestamp against the canonical V6 LaunchCreated event. A wrong launchAt
+      // would shift the 12h/24h observation and could make the market unresolvable.
+      const launchBlock = await findBlockAtOrBeforeTimestamp(launch);
+      const latestBlock = await publicClient.getBlock({ blockTag: "latest" });
+      const fromBlock = launchBlock.number > 5_000n ? launchBlock.number - 5_000n : 0n;
+      const launchLogs = await publicClient.getLogs({ address: V6_FACTORY, event: launchCreatedEvent, args: { token: tokenAddress }, fromBlock, toBlock: latestBlock.number });
+      if (launchLogs.length !== 1) throw new Error(`Expected one canonical V6 LaunchCreated event for this token; found ${launchLogs.length}.`);
+      const launchLog = launchLogs[0];
+      if (launchLog.blockNumber === null || launchLog.blockHash === null || launchLog.args.curve?.toLowerCase() !== curveAddress.toLowerCase()) throw new Error("The V6 launch event is incomplete or points to a different curve.");
+      const eventBlock = await publicClient.getBlock({ blockNumber: launchLog.blockNumber });
+      if (eventBlock.hash?.toLowerCase() !== launchLog.blockHash.toLowerCase() || eventBlock.timestamp !== launch) throw new Error("Launch time must exactly match the canonical V6 LaunchCreated block timestamp.");
       const [isV6, mappedCurve] = await Promise.all([
         publicClient.readContract({ address: V6_FACTORY, abi: factoryAbi, functionName: "isV6Token", args: [tokenAddress] }),
         publicClient.readContract({ address: V6_FACTORY, abi: factoryAbi, functionName: "curveOf", args: [tokenAddress] }),
@@ -268,17 +294,17 @@ export default function V2Markets({ v2Address, account, wallet }: {
       if (!isV6 || mappedCurve.toLowerCase() !== curveAddress.toLowerCase()) {
         throw new Error("This token and curve are not registered together in the VibeVibe V6 factory.");
       }
-      const complete = await publicClient.readContract({ address: curveAddress, abi: curveValidationAbi, functionName: "complete" });
+      const [complete, curvePair, tokenPair] = await Promise.all([
+        publicClient.readContract({ address: curveAddress, abi: curveValidationAbi, functionName: "complete" }),
+        publicClient.readContract({ address: curveAddress, abi: curveValidationAbi, functionName: "pairCurrency" }),
+        publicClient.readContract({ address: tokenAddress, abi: tokenValidationAbi, functionName: "pairCurrency" }),
+      ]);
+      if (curvePair.toLowerCase() !== tokenPair.toLowerCase()) throw new Error("The token and curve pair-currency settings do not match.");
       if (marketKind === 0 && complete) throw new Error("Graduation markets require a token that has not graduated yet.");
+      if (marketKind === 0 && curvePair.toLowerCase() !== ZERO.toLowerCase()) throw new Error("Graduation markets currently support only native-ETH-paired V6 tokens.");
       if (marketKind !== 0) {
-        const [curvePair, tokenPair] = await Promise.all([
-          publicClient.readContract({ address: curveAddress, abi: curveValidationAbi, functionName: "pairCurrency" }),
-          publicClient.readContract({ address: tokenAddress, abi: tokenValidationAbi, functionName: "pairCurrency" }),
-        ]);
         if (!complete) throw new Error("FDV markets are currently limited to graduated V6 tokens.");
-        if (curvePair.toLowerCase() !== pairAddress.toLowerCase() || tokenPair.toLowerCase() !== pairAddress.toLowerCase()) {
-          throw new Error("The selected pair currency does not match the token and curve contracts.");
-        }
+        if (curvePair.toLowerCase() !== pairAddress.toLowerCase()) throw new Error("The selected pair currency does not match the token and curve contracts.");
       }
       if (marketKind === 1 && observation !== launch + 12n * 3600n) throw new Error("A 12-hour market must observe exactly 12 hours after launch.");
       if (marketKind === 2 && observation !== launch + 24n * 3600n) throw new Error("A 24-hour market must observe exactly 24 hours after launch.");
