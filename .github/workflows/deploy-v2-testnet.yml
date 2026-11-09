@@ -82,6 +82,6 @@ jobs:
             echo "## Launchcast V2 deployed to Robinhood Testnet"
             echo ""
             echo "- Chain ID: 46630"
-            echo "- Contract: `$ADDRESS`"
-            echo "- Set this as Vercel environment variable `VITE_LAUNCHCAST_V2_ADDRESS` to activate the V2 tab."
+            echo "- Contract: \`$ADDRESS\`"
+            echo "- Set this as Vercel environment variable \`VITE_LAUNCHCAST_V2_ADDRESS\` to activate the V2 tab."
           } >> "$GITHUB_STEP_SUMMARY"
