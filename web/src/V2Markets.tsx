@@ -68,6 +68,14 @@ type Position = { yes: bigint; no: bigint; claimed: boolean };
 type DiscoveredV6Launch = {
   token: string; curve: string; name: string; symbol: string; launchId: string;
   createdAt: string; complete: boolean; pairCurrency: string; pairSymbol: string;
+  totalSupply?: string; sold?: string; targetPairUnits?: string; pairPrincipal?: string;
+  currentRateBps?: string; stateReadAtBlock?: string;
+  pricing?: {
+    status?: string; method?: string | null; pricePairPerTokenScaled1e18?: string | null;
+    fdvPairScaled1e18?: string | null; quoteInput?: string; netTokensOut?: string;
+    grossTokensOut?: string; pairCost?: string; pairFee?: string; refund?: string;
+    readAtBlock?: string; pairDecimals?: number;
+  };
 };
 const toLocalDateTimeInput = (date: Date) => {
   const offset = date.getTimezoneOffset();
@@ -101,6 +109,17 @@ async function findBlockAtOrBeforeTimestamp(target: bigint) {
 }
 const short = (value: string) => value.slice(0, 6) + "…" + value.slice(-4);
 const fmt = (value: bigint, decimals: number) => Number(formatUnits(value, decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 });
+const fmtFeedUnits = (value?: string | null, decimals = 18) => {
+  if (value === undefined || value === null) return "—";
+  try { return Number(formatUnits(BigInt(value), decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 }); }
+  catch { return "—"; }
+};
+const feedPercent = (part?: string, whole?: string) => {
+  try {
+    if (!part || !whole || BigInt(whole) === 0n) return "—";
+    return (Number(BigInt(part)) / Number(BigInt(whole)) * 100).toFixed(1) + "%";
+  } catch { return "—"; }
+};
 const when = (value: bigint) => new Date(Number(value) * 1000).toLocaleString();
 const typeName = (value: number) => ["Graduation", "12-hour FDV", "24-hour FDV"][value] || "Unknown";
 const statusName = (value: number) => ["Open", "Challenge period", "Disputed", "Resolved", "Voided"][value] || "Unknown";
@@ -136,6 +155,7 @@ export default function V2Markets({ v2Address, account, wallet }: {
   const contractAddress = (v2Address || "") as Address;
   const configured = /^0x[a-fA-F0-9]{40}$/.test(contractAddress);
   const isOwner = Boolean(account && owner && account.toLowerCase() === owner.toLowerCase());
+  const selectedLaunchDetails = discoveredLaunches.find(item => item.launchId === selectedLaunch);
 
   const refresh = useCallback(async () => {
     if (!configured) return;
@@ -405,6 +425,29 @@ export default function V2Markets({ v2Address, account, wallet }: {
         </select>
       </label>
       <p>{discoveredLaunches.length} ungraduated launches available from the latest verified V6 feed. Selecting one fills its on-chain token, curve, pair currency and launch time.</p>
+      {selectedLaunchDetails && <div className="v2-curve-stats">
+        <div className="v2-curve-stats-heading">
+          <div><span className="eyebrow">SELECTED CURVE · LIVE SNAPSHOT</span><h3>{selectedLaunchDetails.name} ({selectedLaunchDetails.symbol})</h3></div>
+          <span className="v2-curve-state">{selectedLaunchDetails.complete ? "Graduated" : "Curve trading"}</span>
+        </div>
+        <div className="v2-curve-stat-grid">
+          <div><span>CURVE PRICE</span><b>{selectedLaunchDetails.pricing?.status === "available" ? fmtFeedUnits(selectedLaunchDetails.pricing.pricePairPerTokenScaled1e18) + " " + selectedLaunchDetails.pairSymbol : "Unavailable"}</b></div>
+          <div><span>FULLY DILUTED VALUE</span><b>{selectedLaunchDetails.pricing?.status === "available" ? fmtFeedUnits(selectedLaunchDetails.pricing.fdvPairScaled1e18) + " " + selectedLaunchDetails.pairSymbol : "Unavailable"}</b></div>
+          <div><span>TOKENS SOLD</span><b>{fmtFeedUnits(selectedLaunchDetails.sold)} / {fmtFeedUnits(selectedLaunchDetails.totalSupply)}</b></div>
+          <div><span>TOKEN SUPPLY SOLD</span><b>{feedPercent(selectedLaunchDetails.sold, selectedLaunchDetails.totalSupply)}</b></div>
+          <div><span>PAIR RAISED</span><b>{fmtFeedUnits(selectedLaunchDetails.pairPrincipal, selectedLaunchDetails.pricing?.pairDecimals ?? 18)} {selectedLaunchDetails.pairSymbol}</b></div>
+          <div><span>GRADUATION PROGRESS</span><b>{feedPercent(selectedLaunchDetails.pairPrincipal, selectedLaunchDetails.targetPairUnits)}</b></div>
+          <div><span>GRADUATION TARGET</span><b>{fmtFeedUnits(selectedLaunchDetails.targetPairUnits, selectedLaunchDetails.pricing?.pairDecimals ?? 18)} {selectedLaunchDetails.pairSymbol}</b></div>
+          <div><span>CURVE RATE</span><b>{selectedLaunchDetails.currentRateBps ? (Number(selectedLaunchDetails.currentRateBps) / 100).toFixed(2) + "%" : "—"}</b></div>
+        </div>
+        <div className="v2-curve-progress"><i style={{ width: Math.min(100, Number(feedPercent(selectedLaunchDetails.pairPrincipal, selectedLaunchDetails.targetPairUnits).replace("%", "")) || 0) + "%" }}/></div>
+        <div className="v2-curve-snapshot">
+          <span>{selectedLaunchDetails.pricing?.method === "curve_quote_buy_exact_in" ? "Curve quote" : selectedLaunchDetails.pricing?.method === "uniswap_v4_pool_state" ? "Uniswap V4 spot" : "Price source"} · {selectedLaunchDetails.pricing?.readAtBlock || selectedLaunchDetails.stateReadAtBlock ? "Block " + (selectedLaunchDetails.pricing?.readAtBlock || selectedLaunchDetails.stateReadAtBlock) : "Block unavailable"}</span>
+          {selectedLaunchDetails.pricing?.quoteInput && <span>Quote input {fmtFeedUnits(selectedLaunchDetails.pricing.quoteInput, selectedLaunchDetails.pricing.pairDecimals ?? 18)} {selectedLaunchDetails.pairSymbol} → {fmtFeedUnits(selectedLaunchDetails.pricing.netTokensOut)} tokens</span>}
+          <a href={"https://explorer.testnet.chain.robinhood.com/address/" + selectedLaunchDetails.curve} target="_blank" rel="noreferrer">Open curve on explorer ↗</a>
+        </div>
+        <p>Snapshot from the V6 discovery feed, not a live transaction quote or settlement evidence. Values are denominated in {selectedLaunchDetails.pairSymbol}; no USD conversion is applied.</p>
+      </div>}
 
       <label>Market type<select value={marketType} onChange={event => setMarketType(event.target.value)}><option value="0">Graduation</option><option value="1">FDV after 12 hours</option><option value="2">FDV after 24 hours</option></select></label>
       <label>Token contract<input value={token} onChange={event => setToken(event.target.value)} placeholder="0x…"/></label>
