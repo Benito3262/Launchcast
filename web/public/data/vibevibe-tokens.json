@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "chainId": 46630,
   "source": "Robinhood Chain Testnet factory curveAt reads cross-checked against token/curve getters; recent launch event logs enrich records when available",
-  "generatedAt": "2026-11-09T22:30:11.824Z",
-  "headBlock": "151059297",
-  "safeHeadBlock": "151059265",
+  "generatedAt": "2026-11-10T07:28:35.958Z",
+  "headBlock": "151243102",
+  "safeHeadBlock": "151243070",
   "coverage": "configured_factories_incremental_plus_latest_launches",
   "warning": "Only three configured factory generations are scanned; unknown/new factories may be missing. Current token/curve getter reads are snapshots at stateReadAtBlock, not historical facts. This file is discovery data only and is never settlement authority.",
   "factories": [
@@ -69,7 +69,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -98,7 +98,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -127,7 +127,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -156,7 +156,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -185,7 +185,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -214,7 +214,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -243,7 +243,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -272,7 +272,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -301,7 +301,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -330,7 +330,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -359,7 +359,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -388,7 +388,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -417,7 +417,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -446,7 +446,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -475,7 +475,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -504,7 +504,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -533,7 +533,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -562,7 +562,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -591,7 +591,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -620,7 +620,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -649,7 +649,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -678,7 +678,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -707,7 +707,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -736,7 +736,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -765,7 +765,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -794,7 +794,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -823,7 +823,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -852,7 +852,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -881,7 +881,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -910,7 +910,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -939,7 +939,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -968,7 +968,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -997,7 +997,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -1026,7 +1026,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -1055,7 +1055,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     },
     {
       "chainId": 46630,
@@ -1084,7 +1084,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "151059265"
+      "stateReadAtBlock": "151243070"
     }
   ]
 }
