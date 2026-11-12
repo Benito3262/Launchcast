@@ -1,0 +1,7 @@
+{
+  "name": "launchcast-keeper",
+  "private": true,
+  "type": "module",
+  "scripts": { "keep": "node keeper.mjs" },
+  "dependencies": { "viem": "^2.21.54" }
+}
