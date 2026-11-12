@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createWalletClient, custom, formatUnits, parseAbi, type Address, type Hex, type WalletClient } from "viem";
 import V2Markets from "./V2Markets";
 import { CurveChart, CurvePanel, fmtNum, readCurves, type CurveState } from "./curve";
-import { chain, publicClient, RPC, V2_ADDRESS, STAKE_TOKEN, OWNER, V6_FACTORY, REPO, ETH_FAUCET, VIBEVIBE, addr, short, EXPLORER } from "./config";
+import { chain, publicClient, V2_ADDRESS, STAKE_TOKEN, OWNER, V6_FACTORY, REPO, ETH_FAUCET, VIBEVIBE, addr, short } from "./config";
 
-type Eip1193 = NonNullable<Window["ethereum"]>;
-type Choice = { info: { uuid: string; name: string; icon: string; rdns: string }; provider: Eip1193 };
+import { deepLinks, ensureChain as switchChain, friendly, isMobile, parseChainId, remember, remembered, type Choice, type Eip1193 } from "./wallet";
 const tusdAbi = parseAbi(["function balanceOf(address) view returns (uint256)", "function faucet()"]);
 const factoryAbi = parseAbi(["function launchCount() view returns (uint256)", "function tokenOfLaunch(uint256) view returns (address)", "function curveOf(address) view returns (address)"]);
 const SCAN = 60;
@@ -37,6 +36,9 @@ export default function App() {
   const [tusd, setTusd] = useState<bigint>();
   const [choices, setChoices] = useState<Choice[]>([]);
   const [picker, setPicker] = useState(false);
+  const [walletErr, setWalletErr] = useState("");
+  const [acctMenu, setAcctMenu] = useState(false);
+  const choicesRef = useRef<Choice[]>([]);
   const [busy, setBusy] = useState("");
   const [toast, setToast] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [launches, setLaunches] = useState<Launch[] | null>(null);
@@ -52,9 +54,11 @@ export default function App() {
       if (d?.info?.uuid) setChoices(old => (old.some(c => c.info.uuid === d.info.uuid) ? old : [...old, d]));
     };
     window.addEventListener("eip6963:announceProvider", onAnnounce);
+    const t = window.setTimeout(() => window.dispatchEvent(new Event("eip6963:requestProvider")), 300);
     window.dispatchEvent(new Event("eip6963:requestProvider"));
-    return () => window.removeEventListener("eip6963:announceProvider", onAnnounce);
+    return () => { window.clearTimeout(t); window.removeEventListener("eip6963:announceProvider", onAnnounce); };
   }, []);
+  useEffect(() => { choicesRef.current = choices; }, [choices]);
 
   const refreshLaunches = useCallback(() => {
     loadLaunches().then(l => { setLaunches(l); setLaunchErr(""); }).catch(e => setLaunchErr(e?.shortMessage || e?.message || "Could not read VibeVibe launches."));
@@ -73,56 +77,91 @@ export default function App() {
 
   useEffect(() => {
     if (!provider?.on) return;
-    const onAcc = (...a: unknown[]) => { const list = a[0] as Address[]; setAccount(list?.[0]); };
-    const onChain = (...a: unknown[]) => setChainOk(Number.parseInt(String(a[0]), 16) === chain.id);
-    provider.on("accountsChanged", onAcc); provider.on("chainChanged", onChain);
-    return () => { provider.removeListener?.("accountsChanged", onAcc); provider.removeListener?.("chainChanged", onChain); };
+    const onAcc = (...a: unknown[]) => {
+      const list = a[0] as Address[];
+      if (list?.[0]) setAccount(list[0]);
+      else { setAccount(undefined); setWallet(undefined); setProvider(undefined); remember(null); }
+    };
+    const onChain = (...a: unknown[]) => setChainOk(parseChainId(a[0]) === chain.id);
+    const onDisc = () => { setAccount(undefined); setWallet(undefined); setProvider(undefined); remember(null); };
+    provider.on("accountsChanged", onAcc); provider.on("chainChanged", onChain); provider.on("disconnect", onDisc);
+    return () => { provider.removeListener?.("accountsChanged", onAcc); provider.removeListener?.("chainChanged", onChain); provider.removeListener?.("disconnect", onDisc); };
   }, [provider]);
 
-  const say = (kind: "ok" | "err", text: string) => { setToast({ kind, text }); window.setTimeout(() => setToast(t => (t?.text === text ? null : t)), 7000); };
+  const say = (kind: "ok" | "err", text: string) => { setToast({ kind, text }); window.setTimeout(() => setToast(t => (t?.text === text ? null : t)), 8000); };
 
   async function ensureChain(p: Eip1193) {
-    const current = Number.parseInt(String(await p.request({ method: "eth_chainId" })), 16);
-    if (current === chain.id) { setChainOk(true); return; }
-    try { await p.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xb626" }] }); }
-    catch (err) {
-      if ((err as { code?: number })?.code !== 4902) throw err;
-      await p.request({ method: "wallet_addEthereumChain", params: [{ chainId: "0xb626", chainName: chain.name, nativeCurrency: chain.nativeCurrency, rpcUrls: [RPC], blockExplorerUrls: [EXPLORER] }] });
-    }
-    setChainOk(true);
+    const ok = await switchChain(p);
+    setChainOk(ok);
+    if (!ok) throw new Error("Your wallet is still on another network. Switch to Robinhood Chain Testnet (46630).");
   }
 
-  async function connectWith(p: Eip1193, label: string, ask = true) {
-    setBusy("Connecting"); setPicker(false);
+  async function connectWith(p: Eip1193, label: string, id: string, ask = true) {
+    setBusy("Connecting"); setPicker(false); setWalletErr("");
     try {
       const accounts = (await p.request({ method: ask ? "eth_requestAccounts" : "eth_accounts" })) as Address[];
-      if (!accounts?.[0]) throw new Error("No account returned. Approve the connection in your wallet.");
-      await ensureChain(p);
-      setWallet(createWalletClient({ chain, transport: custom(p as never) })); setProvider(p); setAccount(accounts[0]);
-      say("ok", `Connected with ${label} on Robinhood Chain Testnet.`);
-    } catch (e) { say("err", (e as Error)?.message?.split("\n")[0] || "Connection failed."); }
+      if (!accounts?.[0]) throw new Error("No account returned. Unlock your wallet and approve the connection.");
+      // Connected from here on, even if the network step fails; the Switch network button retries it.
+      setWallet(createWalletClient({ account: accounts[0], chain, transport: custom(p as never) })); setProvider(p); setAccount(accounts[0]); remember(id);
+      try { await ensureChain(p); say("ok", `Connected with ${label} on Robinhood Chain Testnet.`); }
+      catch (e) { setChainOk(false); say("err", friendly(e)); }
+    } catch (e) { const m = friendly(e); setWalletErr(m); setPicker(true); say("err", m); }
     finally { setBusy(""); }
+  }
+
+  async function wcProvider(showQrModal: boolean) {
+    const projectId = import.meta.env.VITE_REOWN_PROJECT_ID || import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+    if (!projectId) return null;
+    const { default: EthereumProvider } = await import("@walletconnect/ethereum-provider");
+    return EthereumProvider.init({
+      projectId, optionalChains: [chain.id], showQrModal, rpcMap: { [chain.id]: "https://rpc.testnet.chain.robinhood.com" },
+      optionalMethods: ["eth_sendTransaction", "personal_sign", "eth_signTypedData_v4", "eth_accounts", "eth_requestAccounts", "eth_chainId", "wallet_switchEthereumChain", "wallet_addEthereumChain"],
+      optionalEvents: ["chainChanged", "accountsChanged", "disconnect"],
+      metadata: { name: "LaunchCast", description: "Prediction markets for VibeVibe launches", url: location.origin, icons: [location.origin + "/favicon.svg"] },
+    });
   }
 
   async function connectWC() {
-    const projectId = import.meta.env.VITE_REOWN_PROJECT_ID;
-    if (!projectId) { say("err", "No browser wallet found. Open this page in a wallet browser (MetaMask, Rabby, Coinbase Wallet)."); return; }
-    setBusy("Connecting");
+    setPicker(false); setBusy("Connecting");
     try {
-      const { default: EthereumProvider } = await import("@walletconnect/ethereum-provider");
-      const p = await EthereumProvider.init({ projectId, chains: [chain.id], showQrModal: true, rpcMap: { [chain.id]: RPC }, methods: ["eth_sendTransaction", "personal_sign", "eth_signTypedData_v4", "eth_accounts", "eth_requestAccounts", "wallet_switchEthereumChain", "wallet_addEthereumChain"], events: ["chainChanged", "accountsChanged"] });
-      await p.connect();
-      await connectWith(p as unknown as Eip1193, "WalletConnect", false);
-    } catch (e) { say("err", (e as Error)?.message || "WalletConnect failed."); }
-    finally { setBusy(""); }
+      const p = await wcProvider(true);
+      if (!p) { setWalletErr("WalletConnect isn't configured on this deployment. Open this page inside your wallet app instead."); setPicker(true); return; }
+      if (!p.session) await p.connect();
+      await connectWith(p as unknown as Eip1193, "WalletConnect", "walletconnect", false);
+    } catch (e) {
+      const m = /closed|reset|rejected/i.test(String((e as Error)?.message)) ? "WalletConnect was closed before connecting." : friendly(e, "WalletConnect failed.");
+      setWalletErr(m); say("err", m);
+    } finally { setBusy(""); }
   }
 
-  function connect() {
-    if (choices.length > 1) { setPicker(true); return; }
-    if (choices.length === 1) { void connectWith(choices[0].provider, choices[0].info.name); return; }
-    if (window.ethereum) { void connectWith(window.ethereum, "Browser wallet"); return; }
-    void connectWC();
+  async function disconnect() {
+    const p = provider as unknown as { disconnect?: () => Promise<void>; session?: unknown };
+    if (p?.session && p.disconnect) await p.disconnect().catch(() => undefined);
+    else await provider?.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] }).catch(() => undefined);
+    setAccount(undefined); setWallet(undefined); setProvider(undefined); setChainOk(false); setAcctMenu(false); remember(null);
   }
+
+  // Silent reconnect on reload (no popups): only if this browser connected before and the wallet still authorises us.
+  useEffect(() => {
+    const id = remembered();
+    if (!id) return;
+    const t = window.setTimeout(async () => {
+      try {
+        let p: Eip1193 | undefined; let label = "Browser wallet";
+        if (id === "walletconnect") { const wc = await wcProvider(false); if (wc?.session) { p = wc as unknown as Eip1193; label = "WalletConnect"; } }
+        else { const c = choicesRef.current.find(x => x.info.rdns === id || x.info.uuid === id); if (c) { p = c.provider; label = c.info.name; } else if (id === "injected") p = window.ethereum; }
+        if (!p) return;
+        const accounts = (await p.request({ method: "eth_accounts" })) as Address[];
+        if (!accounts?.[0]) return;
+        setWallet(createWalletClient({ account: accounts[0], chain, transport: custom(p as never) })); setProvider(p); setAccount(accounts[0]);
+        setChainOk(parseChainId(await p.request({ method: "eth_chainId" })) === chain.id);
+        void label;
+      } catch { /* stay disconnected */ }
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  function connect() { setWalletErr(""); setPicker(true); }
 
   async function faucet() {
     if (!wallet || !account) return connect();
@@ -147,7 +186,7 @@ export default function App() {
   const tusdOk = tusd !== undefined && tusd > 0n;
   const steps = [
     { done: Boolean(account), title: "Connect a wallet", body: "MetaMask, Rabby or any EVM wallet.", action: !account ? <button className="btn btn-primary sm" onClick={connect} disabled={!!busy}>Connect</button> : <span className="ok">{short(account)}</span> },
-    { done: Boolean(account) && chainOk, title: "Robinhood Chain Testnet", body: "Chain ID 46630. We add it for you.", action: account && !chainOk ? <button className="btn sm" onClick={() => provider && ensureChain(provider).catch(e => say("err", e.message))}>Switch network</button> : chainOk ? <span className="ok">Ready</span> : null },
+    { done: Boolean(account) && chainOk, title: "Robinhood Chain Testnet", body: "Chain ID 46630. We add it for you.", action: account && !chainOk ? <button className="btn sm" onClick={() => provider && ensureChain(provider).then(() => say("ok", "Switched to Robinhood Chain Testnet.")).catch(e => say("err", friendly(e)))}>Switch network</button> : chainOk ? <span className="ok">Ready</span> : null },
     { done: ethOk, title: "Test ETH for gas", body: "Free from the official Robinhood faucet.", action: ethOk ? <span className="ok">{fmtNum(Number(formatUnits(eth!, 18)), 3)} ETH</span> : <a className="btn sm" href={ETH_FAUCET} target="_blank" rel="noreferrer">Open faucet ↗</a> },
     { done: tusdOk, title: "Free tUSD to stake", body: "10,000 test dollars per claim. No value.", action: tusdOk ? <span className="ok">{fmtNum(Number(formatUnits(tusd!, 6)), 6)} tUSD</span> : <button className="btn sm" onClick={faucet} disabled={!!busy || !account}>Get tUSD</button> },
   ];
@@ -160,7 +199,13 @@ export default function App() {
         <a href="#markets">Markets</a><a href="#launches">Launches</a><a href="#how">How it works</a><a href={REPO} target="_blank" rel="noreferrer">GitHub ↗</a>
       </nav>
       <div className="top-right">
-        {account ? <span className="acct"><i className={chainOk ? "dot ok" : "dot warn"} />{short(account)}</span>
+        {account ? <span className="acct-wrap"><button className="acct" onClick={() => setAcctMenu(m => !m)} aria-label="Wallet menu"><i className={chainOk ? "dot ok" : "dot warn"} />{short(account)}</button>
+          {acctMenu && <div className="acct-menu">
+            <span className="muted">{chainOk ? "Robinhood Chain Testnet" : "Wrong network"}</span>
+            {!chainOk && <button className="btn sm btn-primary" onClick={() => { setAcctMenu(false); provider && ensureChain(provider).then(() => say("ok", "Switched to Robinhood Chain Testnet.")).catch(e => say("err", friendly(e))); }}>Switch network</button>}
+            <a className="btn sm" href={addr(account)} target="_blank" rel="noreferrer">View on explorer ↗</a>
+            <button className="btn sm" onClick={() => void disconnect()}>Disconnect</button>
+          </div>}</span>
           : <button className="btn btn-primary" onClick={connect} disabled={!!busy}>{busy === "Connecting" ? "Connecting…" : "Connect wallet"}</button>}
         <button className="menu-btn" aria-label="Menu" onClick={() => setMenu(m => !m)}>☰</button>
       </div>
@@ -242,10 +287,19 @@ export default function App() {
       </div>
     </div>}
 
-    {picker && <div className="modal" onClick={() => setPicker(false)}><div className="sheet narrow" onClick={e => e.stopPropagation()}>
-      <div className="sheet-head"><h3>Choose a wallet</h3><button className="x" onClick={() => setPicker(false)}>×</button></div>
-      <div className="wallets">{choices.map(c => <button key={c.info.uuid} className="wallet" onClick={() => void connectWith(c.provider, c.info.name)}><img src={c.info.icon} alt="" />{c.info.name}</button>)}
-        {import.meta.env.VITE_REOWN_PROJECT_ID && <button className="wallet" onClick={() => void connectWC()}>WalletConnect (mobile)</button>}</div>
+    {picker && <div className="modal" role="dialog" aria-modal="true" onClick={() => setPicker(false)}><div className="sheet narrow" onClick={e => e.stopPropagation()}>
+      <div className="sheet-head"><h3>Connect a wallet</h3><button className="x" aria-label="Close" onClick={() => setPicker(false)}>×</button></div>
+      {walletErr && <p className="wallet-err" role="alert">{walletErr}</p>}
+      <div className="wallets">
+        {choices.map(c => <button key={c.info.uuid} className="wallet" onClick={() => void connectWith(c.provider, c.info.name, c.info.rdns || c.info.uuid)}><img src={c.info.icon} alt="" />{c.info.name}<small>Detected</small></button>)}
+        {choices.length === 0 && window.ethereum && <button className="wallet" onClick={() => void connectWith(window.ethereum!, "Browser wallet", "injected")}><span className="wicon">◎</span>Browser wallet<small>Detected</small></button>}
+        {(import.meta.env.VITE_REOWN_PROJECT_ID || import.meta.env.VITE_WALLETCONNECT_PROJECT_ID) && <button className="wallet" onClick={() => void connectWC()}><span className="wicon wc">WC</span>WalletConnect<small>{isMobile() ? "Any mobile wallet, incl. Rainbow" : "Scan with a phone wallet"}</small></button>}
+      </div>
+      {choices.length === 0 && !window.ethereum && <>
+        <p className="wallet-help">{isMobile() ? "No wallet found in this browser? Open LaunchCast inside your wallet app:" : "No browser wallet found. Install MetaMask or Rabby, use WalletConnect above, or open LaunchCast on your phone in a wallet app:"}</p>
+        <div className="deeplinks">{deepLinks().map(d => <a key={d.name} className="btn sm" href={d.href} rel="noreferrer">{d.name} ↗</a>)}</div>
+      </>}
+      <p className="wallet-help small">We add Robinhood Chain Testnet (chain {chain.id}) to your wallet automatically. Testnet only, nothing here has real value.</p>
     </div></div>}
 
     {busy && busy !== "Connecting" && <div className="toast">{busy}…</div>}

@@ -76,3 +76,11 @@ main{max-width:1180px;margin:0 auto;padding:0 max(4vw,18px)}
 @media(max-width:980px){.hero{grid-template-columns:1fr;padding-top:44px}.steps,.how{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:720px){.nav{display:none;position:absolute;top:100%;left:0;right:0;flex-direction:column;gap:0;margin:0;background:var(--bg);border-bottom:1px solid var(--line)}.nav.open{display:flex}.nav a{padding:14px 20px;border-top:1px solid var(--line)}
  .menu-btn{display:block}.steps,.how{grid-template-columns:1fr}.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.foot{grid-template-columns:1fr}.filters input{min-width:0;flex:1}.filters{width:100%}.hero p{font-size:16px}.top .btn{padding:9px 12px}}
+.acct-wrap{position:relative}button.acct{cursor:pointer;font:inherit;color:inherit}
+.acct-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;display:grid;gap:8px;min-width:210px;background:var(--bg2);border:1px solid var(--line2);border-radius:12px;padding:12px;box-shadow:0 12px 40px rgba(0,0,0,.45)}
+.acct-menu .btn{justify-content:center;text-align:center}
+.wallet small{margin-left:auto;color:var(--muted);font-size:12px}
+.wicon{width:26px;height:26px;display:inline-grid;place-items:center;border-radius:7px;background:var(--line2);font-size:13px;font-weight:700}.wicon.wc{background:#3b99fc;color:#fff;font-size:11px}
+.wallet-err{background:rgba(255,90,90,.1);border:1px solid rgba(255,90,90,.35);color:#ffb4b4;border-radius:10px;padding:10px 12px;margin:0 0 12px;font-size:14px}
+.wallet-help{color:var(--muted);font-size:14px;margin:16px 0 8px}.wallet-help.small{font-size:12px;margin-top:14px}
+.deeplinks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.deeplinks .btn{justify-content:center;text-align:center;white-space:normal;min-width:0}
