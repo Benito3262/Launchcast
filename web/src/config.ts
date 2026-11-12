@@ -15,6 +15,8 @@ export const publicClient = createPublicClient({ chain, transport: http(RPC, { b
 
 /** LaunchCast V2, deployed 9 Nov 2026 by the LaunchCast owner wallet (GitHub Actions run 42657812701). */
 export const V2_ADDRESS = (import.meta.env.VITE_LAUNCHCAST_V2_ADDRESS || "0x6c03417bb306110f4cbd560a80e0784b7d82e023") as Address;
+/** LaunchcastFdv: FDV markets on any V6 launch, settled from on-chain curve/pool state (deployed 12 Nov 2026). */
+export const FDV_ADDRESS = "0xda8051febc52f8cbf712c44a04a8d581c5d892e1" as Address;
 export const STAKE_TOKEN = "0x9557aade5c89fe39941b4f3a60cbac16e3f32143" as Address;
 export const OWNER = "0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14" as Address;
 export const V6_FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
