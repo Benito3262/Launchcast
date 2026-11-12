@@ -28,7 +28,7 @@ jobs:
       - name: Check out V2 implementation branch
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: launchcast-v2-sync
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
