@@ -80,7 +80,7 @@ type DiscoveredV6Launch = {
 };
 const toLocalDateTimeInput = (date: Date) => {
   const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 16);
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 19);
 };
 const V6_FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
 const launchCreatedEvent = parseAbiItem("event LaunchCreated(uint256 indexed launchId,address indexed launcher,address indexed token,address curve,string name,string symbol,string metadataURI,address pairCurrency,uint16 taxBps,uint64 packedWeights,address projectTreasury,uint256 targetPairUnits,uint256 netPersonal,uint256 giftNetTotal,bytes32 giftRoot,uint256 giftCount)");
@@ -423,9 +423,9 @@ export default function V2Markets({ v2Address, account, wallet }: {
       <label>Token contract<input value={token} onChange={event => setToken(event.target.value)} placeholder="0x…"/></label>
       <label>Curve contract<input value={curve} onChange={event => setCurve(event.target.value)} placeholder="0x…"/></label>
       {marketType !== "0" && <><label>Pair currency contract<input value={pairCurrency} onChange={event => setPairCurrency(event.target.value)} placeholder="0x…"/></label><label>Target FDV (pair units)<input value={targetFdv} onChange={event => setTargetFdv(event.target.value)} placeholder="e.g. 100"/></label></>}
-      <label>Launch time<input type="datetime-local" value={launchAt} onChange={event => setLaunchAt(event.target.value)}/></label>
-      <label>Observation time<input type="datetime-local" value={observationAt} onChange={event => setObservationAt(event.target.value)}/></label>
-      <label>Betting closes<input type="datetime-local" value={closeAt} onChange={event => setCloseAt(event.target.value)}/></label>
+      <label>Launch time<input type="datetime-local" step="1" value={launchAt} onChange={event => setLaunchAt(event.target.value)}/></label>
+      <label>Observation time<input type="datetime-local" step="1" value={observationAt} onChange={event => setObservationAt(event.target.value)}/></label>
+      <label>Betting closes<input type="datetime-local" step="1" value={closeAt} onChange={event => setCloseAt(event.target.value)}/></label>
       <label>Maximum observation lag (seconds)<input inputMode="numeric" value={maxLag} onChange={event => setMaxLag(event.target.value)}/></label>
       <button className="v2-create-button" disabled={Boolean(busy)} onClick={() => void create()}>{busy === "Create V2 market" ? "Creating…" : "Create V2 market"}</button>
       <p>FDV thresholds are denominated in the selected pair asset. Resolver attestation is a separate process; creating a market does not enable betting after its close time.</p>
