@@ -27,6 +27,11 @@ export const STAKE_TOKEN = "0x9557aade5c89fe39941b4f3a60cbac16e3f32143" as Addre
 export const OWNER = "0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14" as Address;
 export const V6_FACTORY = "0xac135da186de8325047ef2afd1d16d5971f731f7" as Address;
 export const REPO = "https://github.com/Benito3262/Launchcast";
+/** $CAST, the LaunchCast project token, launched on VibeVibe V6 (launch #3277) by the owner wallet on 12 Nov 2026. */
+export const CAST_TOKEN = "0x23a1fCd0fd08a2868499C2DC695C6AcDC0B2Eeb9" as Address;
+export const CAST_CURVE = "0x4cd8b708177ef9c712d2bfddca82e8184699ae0c" as Address;
+export const CAST_LAUNCH_TX = "0xa0720e745e247377a18714a996391aef9c7ee8cc4b8e99eb558a03dd85634439";
+export const CAST_VIBEVIBE = `https://testnet.vibevibe.fun/token/${CAST_TOKEN}`;
 export const ETH_FAUCET = "https://faucet.testnet.chain.robinhood.com/";
 export const VIBEVIBE = "https://testnet.vibevibe.fun/";
 export const addr = (a: string) => `${EXPLORER}/address/${a}`;

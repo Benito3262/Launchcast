@@ -28,6 +28,20 @@ V2 was deployed on 9 Nov 2026 by the [`Deploy Launchcast V2` workflow](https://g
 
 `LaunchcastFdv` was deployed on 12 Nov 2026 from the owner wallet (tx [`0x81d0e0e2…`](https://explorer.testnet.chain.robinhood.com/tx/0x81d0e0e205792c467f6f66254d6c93b61fa818c1b303fd2e2fb800fcba854e03)) and sits alongside V2; V2 and its markets are untouched. Both share tUSD as the stake token with a 0% fee, and the app lists both contracts' markets together.
 
+## Project token: $CAST
+
+LaunchCast's project token is **$CAST** (name "Launchcast"), launched on VibeVibe V6 testnet as launch #3277 on 12 Nov 2026. The creator is the LaunchCast owner wallet, the same wallet that deploys and owns the contracts above.
+
+| | Address / link |
+|---|---|
+| Token | [`0x23a1fCd0fd08a2868499C2DC695C6AcDC0B2Eeb9`](https://explorer.testnet.chain.robinhood.com/address/0x23a1fCd0fd08a2868499C2DC695C6AcDC0B2Eeb9) |
+| Bonding curve | [`0x4cd8b708177ef9c712d2bfddca82e8184699ae0c`](https://explorer.testnet.chain.robinhood.com/address/0x4cd8b708177ef9c712d2bfddca82e8184699ae0c) |
+| Creator wallet | [`0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14`](https://explorer.testnet.chain.robinhood.com/address/0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14) |
+| Launch tx | [`0xa0720e74…`](https://explorer.testnet.chain.robinhood.com/tx/0xa0720e745e247377a18714a996391aef9c7ee8cc4b8e99eb558a03dd85634439) |
+| VibeVibe page | https://testnet.vibevibe.fun/token/0x23a1fCd0fd08a2868499C2DC695C6AcDC0B2Eeb9 |
+
+The app's **Project token** section shows the $CAST bonding curve live, and the curve is read on-chain every 20 seconds. $CAST is paired with ETH and will be added as a market later.
+
 ## How FDV markets settle (LaunchcastFdv)
 
 - **FDV is read on-chain**, in the pair asset's units. On the curve it's `(target + 3·raised) × totalSupply / (3·1,066,666,667e18 − 3·sold)`, the curve's spot price times supply, and the contract refuses curves that don't fit the V6 shape. After graduation it's `totalSupply × price` from the token's locked Uniswap v4 pool (`slot0.sqrtPriceX96`, read via `PoolManager.extsload` on the pool key the V6 locker reports).

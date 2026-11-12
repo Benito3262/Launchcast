@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createWalletClient, custom, formatUnits, parseAbi, type Address, type Hex, type WalletClient } from "viem";
 import V2Markets from "./V2Markets";
 import { CurveChart, CurvePanel, fmtNum, readCurves, type CurveState } from "./curve";
+import { ProjectToken, CastBadge } from "./castToken";
 import { chain, publicClient, V2_ADDRESS, STAKE_TOKEN, OWNER, V6_FACTORY, REPO, ETH_FAUCET, VIBEVIBE, addr, short } from "./config";
 
 import { deepLinks, ensureChain as switchChain, friendly, isMobile, parseChainId, remember, remembered, type Choice, type Eip1193 } from "./wallet";
@@ -196,7 +197,7 @@ export default function App() {
     <header className="top">
       <a className="brand" href="#top"><Mark /><span>LaunchCast</span></a>
       <nav className={menu ? "nav open" : "nav"} onClick={() => setMenu(false)}>
-        <a href="#markets">Markets</a><a href="#launches">Launches</a><a href="#how">How it works</a><a href={REPO} target="_blank" rel="noreferrer">GitHub ↗</a>
+        <a href="#markets">Markets</a><a href="#cast">$CAST</a><a href="#launches">Launches</a><a href="#how">How it works</a><a href={REPO} target="_blank" rel="noreferrer">GitHub ↗</a>
       </nav>
       <div className="top-right">
         {account ? <span className="acct-wrap"><button className="acct" onClick={() => setAcctMenu(m => !m)} aria-label="Wallet menu"><i className={chainOk ? "dot ok" : "dot warn"} />{short(account)}</button>
@@ -214,6 +215,7 @@ export default function App() {
     <main id="top">
       <section className="hero">
         <div className="hero-copy">
+          <CastBadge />
           <span className="kicker">Prediction markets for vibe/vibe launches</span>
           <h1>Call the curve.</h1>
           <p>Every VibeVibe launch climbs a bonding curve toward graduation. LaunchCast lets you take a free YES or NO position on where it lands, with every curve read live from Robinhood Chain Testnet.</p>
@@ -235,6 +237,8 @@ export default function App() {
         <div className="section-head"><span className="kicker">Start in a minute</span><h2>Four steps, all free</h2></div>
         <ol className="steps">{steps.map((s, i) => <li key={s.title} className={s.done ? "step done" : "step"}><span className="step-n">{s.done ? "✓" : i + 1}</span><div><b>{s.title}</b><p>{s.body}</p></div><div className="step-act">{s.action}</div></li>)}</ol>
       </section>
+
+      <ProjectToken />
 
       <section id="markets" className="section">
         <V2Markets v2Address={V2_ADDRESS} account={account} wallet={wallet} />
