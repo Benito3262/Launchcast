@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import "./v2.css";
+import { CurvePanel } from "./curve";
 import {
   createPublicClient, defineChain, formatUnits, http, parseAbiItem, parseUnits,
   type Address, type Hex, type WalletClient,
@@ -109,17 +110,6 @@ async function findBlockAtOrBeforeTimestamp(target: bigint) {
 }
 const short = (value: string) => value.slice(0, 6) + "…" + value.slice(-4);
 const fmt = (value: bigint, decimals: number) => Number(formatUnits(value, decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 });
-const fmtFeedUnits = (value?: string | null, decimals = 18) => {
-  if (value === undefined || value === null) return "—";
-  try { return Number(formatUnits(BigInt(value), decimals)).toLocaleString(undefined, { maximumFractionDigits: 4 }); }
-  catch { return "—"; }
-};
-const feedPercent = (part?: string, whole?: string) => {
-  try {
-    if (!part || !whole || BigInt(whole) === 0n) return "—";
-    return (Number(BigInt(part)) / Number(BigInt(whole)) * 100).toFixed(1) + "%";
-  } catch { return "—"; }
-};
 const when = (value: bigint) => new Date(Number(value) * 1000).toLocaleString();
 const typeName = (value: number) => ["Graduation", "12-hour FDV", "24-hour FDV"][value] || "Unknown";
 const statusName = (value: number) => ["Open", "Challenge period", "Disputed", "Resolved", "Voided"][value] || "Unknown";
@@ -380,11 +370,11 @@ export default function V2Markets({ v2Address, account, wallet }: {
   </section>;
 
   return <section className="v2-panel">
-    <div className="v2-heading"><div><span className="eyebrow">LAUNCHCAST V2 · ROBINHOOD TESTNET</span><h1>Pooled prediction markets</h1><p>Graduation and 12/24-hour FDV markets with resolver attestations, challenges and refundable void outcomes.</p></div><button className="v2-refresh" onClick={() => void refresh()}>↻ Refresh</button></div>
+    <div className="v2-heading"><div><span className="eyebrow">LaunchCast V2 · live markets</span><h1>Markets</h1><p>Graduation and 12/24h FDV markets on VibeVibe launches. Stake free tUSD on YES or NO; settlement comes from attested on-chain evidence with a 30-minute challenge window.</p></div><button className="v2-refresh" onClick={() => void refresh()}>↻ Refresh</button></div>
     <div className="v2-summary"><div><b>{markets.filter(m => m.status === 0 && now < m.closeAt && (m.marketType !== 0 || m.graduationComplete === false)).length}</b><span>Open markets</span></div><div><b>{portfolio.length}</b><span>Your positions</span></div><div><b>{wins}</b><span>Wins</span></div><div><b>{losses}</b><span>Losses</span></div><div><b>{claimableCount}</b><span>Claimable</span></div><div><b>{(feeBps / 100).toFixed(2)}%</b><span>Market fee</span></div><div><b>{stakeSymbol}</b><span>Stake asset</span></div></div>
     <div className="v2-section-tabs"><button className={section === "markets" ? "selected" : ""} onClick={() => setSection("markets")}>Markets</button><button className={section === "portfolio" ? "selected" : ""} onClick={() => setSection("portfolio")}>My portfolio <span>{portfolio.length}</span></button></div>
     {notice && <div className="notice success">{notice}</div>}{error && <div className="notice danger">{error}</div>}
-    {section === "markets" ? <><div className="v2-filter-tabs">{(["all", "open", "resolving", "resolved"] as const).map(filter => <button key={filter} className={marketFilter === filter ? "selected" : ""} onClick={() => setMarketFilter(filter)}>{filter === "all" ? "All markets" : filter === "open" ? "Open" : filter === "resolving" ? "Resolving" : "Resolved"}</button>)}</div>{visibleMarkets.length === 0 ? <div className="empty"><h3>No markets in this view</h3><p>Try another market filter or check back after a new market is created.</p></div> : <div className="v2-market-list">{visibleMarkets.map(market => {
+    {section === "markets" ? <><div className="v2-filter-tabs">{(["all", "open", "resolving", "resolved"] as const).map(filter => <button key={filter} className={marketFilter === filter ? "selected" : ""} onClick={() => setMarketFilter(filter)}>{filter === "all" ? "All markets" : filter === "open" ? "Open" : filter === "resolving" ? "Resolving" : "Resolved"}</button>)}</div>{visibleMarkets.length === 0 ? <div className="empty"><b>{markets.length === 0 ? "No markets listed yet" : "Nothing in this filter"}</b><p>{markets.length === 0 ? "The first LaunchCast V2 markets go live here as soon as the owner lists them. Meanwhile, watch the live bonding curves below and grab free tUSD so you can stake the moment one opens." : "Try another filter or check back soon."}</p>{markets.length === 0 && <a className="btn sm" href="#launches">Browse live curves</a>}</div> : <div className="v2-market-list">{visibleMarkets.map(market => {
       const id = market.id.toString(), position = positions[id], total = market.yesPool + market.noPool;
       const closed = now >= market.closeAt || (market.marketType === 0 && market.graduationComplete !== false);
       const canFinalize = market.status === 1 && BigInt(Math.floor(Date.now() / 1000)) > market.challengeEndsAt;
@@ -394,7 +384,8 @@ export default function V2Markets({ v2Address, account, wallet }: {
       return <article className="v2-market-card" key={id}>
         <div className="v2-card-top"><span className={"v2-status status-" + market.status}>{market.status === 0 && closed ? "Betting closed" : statusName(market.status)}</span><span>#{id} · {typeName(market.marketType)}</span></div>
         <h3>{market.marketType === 0 ? "Will this token graduate by the observation time?" : `Will FDV reach ${fmt(market.targetFdv, 18)} ${market.pairSymbol} by the observation time?`}</h3>
-        <div className="v2-muted">Token · {short(market.token)}</div>
+        <CurvePanel curve={market.curve} title={market.status === 0 ? "Where the curve is now" : "Curve today"} />
+        
         <div className="v2-addresses"><span>Token <a href={"https://explorer.testnet.chain.robinhood.com/address/" + market.token} target="_blank" rel="noreferrer">{short(market.token)} ↗</a></span><span>Curve <a href={"https://explorer.testnet.chain.robinhood.com/address/" + market.curve} target="_blank" rel="noreferrer">{short(market.curve)} ↗</a></span></div>
         <div className="v2-dates"><span>Closes <b>{when(market.closeAt)}</b></span><span>Observation <b>{when(market.observationAt)}</b></span></div>
         {market.marketType !== 0 && <div className="v2-target">Target <b>{fmt(market.targetFdv, 18)} {market.pairSymbol}</b>{market.status >= 1 && <span> · Attested {fmt(market.attestedFdv, 18)} {market.pairSymbol}</span>}</div>}
@@ -425,31 +416,10 @@ export default function V2Markets({ v2Address, account, wallet }: {
         </select>
       </label>
       <p>{discoveredLaunches.length} ungraduated launches available from the latest verified V6 feed. Selecting one fills its on-chain token, curve, pair currency and launch time.</p>
-      {selectedLaunchDetails && <div className="v2-curve-stats">
-        <div className="v2-curve-stats-heading">
-          <div><span className="eyebrow">SELECTED CURVE · LIVE SNAPSHOT</span><h3>{selectedLaunchDetails.name} ({selectedLaunchDetails.symbol})</h3></div>
-          <span className="v2-curve-state">{selectedLaunchDetails.complete ? "Graduated" : "Curve trading"}</span>
-        </div>
-        <div className="v2-curve-stat-grid">
-          <div><span>CURVE PRICE</span><b>{selectedLaunchDetails.pricing?.status === "available" ? fmtFeedUnits(selectedLaunchDetails.pricing.pricePairPerTokenScaled1e18) + " " + selectedLaunchDetails.pairSymbol : "Unavailable"}</b></div>
-          <div><span>FULLY DILUTED VALUE</span><b>{selectedLaunchDetails.pricing?.status === "available" ? fmtFeedUnits(selectedLaunchDetails.pricing.fdvPairScaled1e18) + " " + selectedLaunchDetails.pairSymbol : "Unavailable"}</b></div>
-          <div><span>TOKENS SOLD</span><b>{fmtFeedUnits(selectedLaunchDetails.sold)} / {fmtFeedUnits(selectedLaunchDetails.totalSupply)}</b></div>
-          <div><span>TOKEN SUPPLY SOLD</span><b>{feedPercent(selectedLaunchDetails.sold, selectedLaunchDetails.totalSupply)}</b></div>
-          <div><span>PAIR RAISED</span><b>{fmtFeedUnits(selectedLaunchDetails.pairPrincipal, selectedLaunchDetails.pricing?.pairDecimals ?? 18)} {selectedLaunchDetails.pairSymbol}</b></div>
-          <div><span>GRADUATION PROGRESS</span><b>{feedPercent(selectedLaunchDetails.pairPrincipal, selectedLaunchDetails.targetPairUnits)}</b></div>
-          <div><span>GRADUATION TARGET</span><b>{fmtFeedUnits(selectedLaunchDetails.targetPairUnits, selectedLaunchDetails.pricing?.pairDecimals ?? 18)} {selectedLaunchDetails.pairSymbol}</b></div>
-          <div><span>CURVE RATE</span><b>{selectedLaunchDetails.currentRateBps ? (Number(selectedLaunchDetails.currentRateBps) / 100).toFixed(2) + "%" : "—"}</b></div>
-        </div>
-        <div className="v2-curve-progress"><i style={{ width: Math.min(100, Number(feedPercent(selectedLaunchDetails.pairPrincipal, selectedLaunchDetails.targetPairUnits).replace("%", "")) || 0) + "%" }}/></div>
-        <div className="v2-curve-snapshot">
-          <span>{selectedLaunchDetails.pricing?.method === "curve_quote_buy_exact_in" ? "Curve quote" : selectedLaunchDetails.pricing?.method === "uniswap_v4_pool_state" ? "Uniswap V4 spot" : "Price source"} · {selectedLaunchDetails.pricing?.readAtBlock || selectedLaunchDetails.stateReadAtBlock ? "Block " + (selectedLaunchDetails.pricing?.readAtBlock || selectedLaunchDetails.stateReadAtBlock) : "Block unavailable"}</span>
-          {selectedLaunchDetails.pricing?.quoteInput && <span>Quote input {fmtFeedUnits(selectedLaunchDetails.pricing.quoteInput, selectedLaunchDetails.pricing.pairDecimals ?? 18)} {selectedLaunchDetails.pairSymbol} → {fmtFeedUnits(selectedLaunchDetails.pricing.netTokensOut)} tokens</span>}
-          <a href={"https://explorer.testnet.chain.robinhood.com/address/" + selectedLaunchDetails.curve} target="_blank" rel="noreferrer">Open curve on explorer ↗</a>
-        </div>
-        <p>Snapshot from the V6 discovery feed, not a live transaction quote or settlement evidence. Values are denominated in {selectedLaunchDetails.pairSymbol}; no USD conversion is applied.</p>
-      </div>}
+      {selectedLaunchDetails && <CurvePanel curve={selectedLaunchDetails.curve} title={`${selectedLaunchDetails.name} (${selectedLaunchDetails.symbol}) · live curve`} />}
 
       <label>Market type<select value={marketType} onChange={event => setMarketType(event.target.value)}><option value="0">Graduation</option><option value="1">FDV after 12 hours</option><option value="2">FDV after 24 hours</option></select></label>
+      {marketType === "0" && <div className="v2-presets"><span>Graduation window</span>{([["5 min", 5 * 60], ["1 hour", 3600], ["24 hours", 86400], ["7 days", 7 * 86400]] as const).map(([label, secs]) => <button key={label} type="button" onClick={() => { const now = Date.now(); setObservationAt(toLocalDateTimeInput(new Date(now + secs * 1000))); setCloseAt(toLocalDateTimeInput(new Date(now + Math.max(60, secs - Math.min(3600, Math.round(secs / 5))) * 1000))); }}>{label}</button>)}<small>Short windows work on-chain, but payouts finalize only after the resolver attests and the 30-minute challenge window passes.</small></div>}
       <label>Token contract<input value={token} onChange={event => setToken(event.target.value)} placeholder="0x…"/></label>
       <label>Curve contract<input value={curve} onChange={event => setCurve(event.target.value)} placeholder="0x…"/></label>
       {marketType !== "0" && <><label>Pair currency contract<input value={pairCurrency} onChange={event => setPairCurrency(event.target.value)} placeholder="0x…"/></label><label>Target FDV (pair units)<input value={targetFdv} onChange={event => setTargetFdv(event.target.value)} placeholder="e.g. 100"/></label></>}

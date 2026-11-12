@@ -1,99 +1,53 @@
-# Launchcast
+# LaunchCast
 
-Launchcast is a testnet-only prediction market for verifiable activity around VibeVibe token launches on Robinhood Chain Testnet.
+**Call the curve.** LaunchCast runs free, testnet-only YES/NO prediction markets on [vibe/vibe](https://testnet.vibevibe.fun/) token launches, and every bonding curve on it is read live from Robinhood Chain Testnet.
 
-## Project principles
+- **Live app:** https://launchcast-zeta.vercel.app
+- **Network:** Robinhood Chain Testnet (chain ID 46630). RPC `https://rpc.testnet.chain.robinhood.com`, [explorer](https://explorer.testnet.chain.robinhood.com), [faucet](https://faucet.testnet.chain.robinhood.com/)
 
-- Markets must have outcomes that smart contracts can verify directly from on-chain state.
-- User stakes are held in smart-contract escrow.
-- YES/NO winners share the losing pool proportionally, subject to any explicitly configured fee.
-- A market is resolved once; each winning participant can then claim their payout.
-- Settlement is transaction-triggered. Contracts do not execute themselves at midnight or on a timer.
-- The indexer and frontend help discover and display markets; neither is trusted to decide outcomes.
-- Testnet assets have no monetary value. Never use a wallet seed phrase or private key in the project or chat.
+> **Testnet only, no real value.** Stakes are tUSD from a public faucet, and gas is Robinhood testnet ETH. The contracts are unaudited.
 
-## Initial network
+## What it does
 
-- Network: Robinhood Chain Testnet
-- Chain ID: 46630
-- RPC: https://rpc.testnet.chain.robinhood.com
-- Explorer: https://explorer.testnet.chain.robinhood.com
-- Faucet: https://faucet.testnet.chain.robinhood.com/
+1. **Live bonding curves.** It reads the 60 newest launches straight from the VibeVibe V6 factory, plus each curve's raised amount, target, tokens sold, tax and graduation state. For each one it draws where the token sits on its curve, its spot price, its FDV now and at graduation, and how much is left to graduate.
+2. **V2 markets.** You can take a pooled YES/NO position, in tUSD, on whether a launch **graduates by a deadline** or whether its **FDV clears a target 12 or 24 hours after launch**. Winners split the losing pool, the fee is 0%, and there's a refund if the winning side is empty or nothing is attested.
+3. **Settlement from chain evidence.** The resolver signs an EIP-712 attestation of the observed block, block hash, evidence hash and outcome. Anyone can challenge it for 30 minutes, then anyone can finalize it, and winners claim. The resolver is a disclosed, single trust point (see [docs/v2-resolution-design.md](docs/v2-resolution-design.md)).
 
-Network details and contract addresses must be revalidated before deployment.
+## Contracts (Robinhood Chain Testnet)
 
-## Web application
+| Contract | Address |
+|---|---|
+| LaunchcastV2 (markets) | [`0x6c03417bb306110f4cbd560a80e0784b7d82e023`](https://explorer.testnet.chain.robinhood.com/address/0x6c03417bb306110f4cbd560a80e0784b7d82e023) |
+| TestUSD (tUSD stake token, 6 decimals, public faucet) | [`0x9557aade5c89fe39941b4f3a60cbac16e3f32143`](https://explorer.testnet.chain.robinhood.com/address/0x9557aade5c89fe39941b4f3a60cbac16e3f32143) |
+| Owner / deployer / resolver | [`0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14`](https://explorer.testnet.chain.robinhood.com/address/0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14) |
+| VibeVibe V6 factory (read-only) | [`0xac135da186de8325047ef2afd1d16d5971f731f7`](https://explorer.testnet.chain.robinhood.com/address/0xac135da186de8325047ef2afd1d16d5971f731f7) |
 
-A first React + Vite frontend is available in `web/`. It includes Robinhood Chain Testnet wallet connection, on-chain market reads, YES/NO betting with ERC-20 approval, a wallet portfolio, permissionless settlement and claims, a TestUSD faucet action, and owner-only market creation. The interface is responsive and reads market state directly from the Launchcast contract.
+V2 was deployed on 9 Nov 2026 by the [`Deploy Launchcast V2` workflow](https://github.com/Benito3262/Launchcast/actions/runs/42657812701). The retired V1 contract (`0x091413de1302640f78d41e2370507c1a8f774c45`) is still on-chain, but the app no longer uses it.
 
-To run it locally:
+## The VibeVibe V6 curve (as measured on-chain)
 
-```bash
-cd web
-cp .env.example .env
-npm install
-npm run dev
+Every V6 curve we checked fits a constant-product curve with virtual reserves, to within 0.001%:
+
+```
+(target/3 + raised) × (1,066,666,667 − sold) = (target/3) × 1,066,666,667
 ```
 
-After the gated deployment workflow succeeds, it publishes `web/public/data/deployment.json` with the Launchcast and TestUSD addresses. The frontend loads that public config automatically; `VITE_LAUNCHCAST_ADDRESS` remains available as an optional local override.
+800M of the 1B tokens sell on the curve. When `sold` reaches 800M, `raised` equals `target` (about 4 ETH on ETH pairs) and the token graduates to a locked Uniswap v4 pool. The spot price is `V·Tv / (Tv − sold)²`, which is 16× higher at graduation than at launch. See `web/src/curve.tsx`.
 
-The web build is checked by `.github/workflows/web.yml`. The frontend has not yet been deployed to a public hosting provider.
+## Repo layout
 
-### Current testnet deployment
-
-Launchcast and TestUSD were successfully deployed to Robinhood Chain Testnet (chain ID 46630) on 2026-11-08. The deployment workflow completed successfully on its second attempt, and the public deployment config is committed at `web/public/data/deployment.json`.
-
-- Launchcast: `0x091413de1302640f78d41e2370507c1a8f774c45`
-- TestUSD: `0x9557aade5c89fe39941b4f3a60cbac16e3f32143`
-- [Launchcast contract explorer](https://explorer.testnet.chain.robinhood.com/address/0x091413de1302640f78d41e2370507c1a8f774c45)
-- [TestUSD contract explorer](https://explorer.testnet.chain.robinhood.com/address/0x9557aade5c89fe39941b4f3a60cbac16e3f32143)
-
-The app includes wallet connection, live contract market reads, YES/NO staking, portfolio and claims, TestUSD faucet access, owner-only market creation, permissionless settlement, and owner fee controls. All transactions remain testnet-only. The public website still needs a hosting connection and end-to-end wallet testing. A Vercel config is included at `web/vercel.json`. To publish it, import `Benito3262/Launchcast` in Vercel, set the project root directory to `web`, keep the build command as `npm run build` and output directory as `dist`, then deploy. The frontend reads its testnet contract addresses from the committed deployment JSON; no private key or wallet secret is needed for the frontend hosting build.
-
-The manually gated workflow is retained for future testnet redeployments at **Actions → Deploy Launchcast to Robinhood Testnet**. It requires repository secrets `LAUNCHCAST_TESTNET_PRIVATE_KEY` (dedicated testnet-only wallet key) and `LAUNCHCAST_FEE_RECIPIENT`. Never put a private key in a commit, issue, chat message, or workflow input.
-
-**Market wording:** the proposition is whether the curve's `graduated()` getter returns `true` when settlement is executed at or after `resolveAfter`. It does not establish whether the curve graduated before the deadline.
-
-## VibeVibe token discovery
-
-A read-only TypeScript event indexer is available in `services/discovery/`. It scans the three documented factory generations using `TokenLaunched` and `TokenLaunchedQuoted` logs, checks the RPC is on chain ID 46630, verifies configured factory bytecode and `launchCount()`, adapts its log-query ranges, and keeps a local resumable checkpoint. Because recent launch logs can be quiet even while factory counters have advanced historically, it also reads the latest 12 launch IDs per factory through `curveAt()`, then cross-checks `curve.token()` against `token.curve()` before displaying token details. The registry uses a 32-block confirmation buffer and labels current-state reads with the block at which they were taken.
-
-Run it locally from `services/discovery/`:
+- `contracts/`: `LaunchcastV2.sol` (markets), `TestUSD.sol`, and the retired `Launchcast.sol` (V1)
+- `test/`: Foundry tests (`forge test`)
+- `services/discovery/`: VibeVibe launch indexer (runs every 6h via Actions) and the resolver/attestation tooling
+- `web/`: React + Vite app, deployed on Vercel (root directory `web`)
 
 ```bash
-npm install
-npm run discover
+cd web && npm install && npm run dev
 ```
 
-Or, from GitHub on mobile/desktop, open **Actions → Refresh VibeVibe token registry → Run workflow**. That workflow runs the indexer and commits the refreshed static registry.
+## Roadmap
 
-A local `npm run discover` scans a recent 100,000-block event window, then resumes from its saved cursor with a reorg overlap. The GitHub Actions workflow scans a bounded recent event window and refreshes incrementally every six hours. Every run also enumerates the latest 12 factory launch IDs per configured factory using `curveAt()`, then verifies reciprocal `curve.token()` and `token.curve()` getters. This produces 36 recent token records across the three configured factories. The registry records each factory's on-chain `launchCount()` as context; those counters are not proof that every historical event was indexed. To request it locally, run `npm run discover:full` from `services/discovery/`.
+- Short live rounds (5 min / 1 h / 24 h) that anyone can open for launches meeting on-chain standards, settled purely from curve state. A tested contract proposal is on the `proposal/live-rounds` branch. It isn't deployed.
+- List the LaunchCast project token as a market once it launches on vibe/vibe.
 
-The local checkpoint is written to `services/discovery/data/checkpoint.json`; the generated registry is `web/public/data/vibevibe-tokens.json`. The frontend reads that registry for its recent-launch panel. It does not use discovery data as settlement authority.
-
-**Coverage limitation:** the factory list is manually maintained, not a canonical on-chain registry. Three documented generations are configured; unknown factory deployments may be missing. The public RPC is rate-limited and not production-grade. Full historical indexing may require a dedicated archive/indexing provider. Token/curve getter ABIs are reconstructed community interfaces and failed reads are left unknown. Current-state reads do not prove when a historical event happened. Never use this indexer output to decide market outcomes.
-
-## Contract implementation status
-
-The current Solidity implementation is in the repository:
-
-- `contracts/Launchcast.sol`: pooled YES/NO market creation, ERC-20 escrow, permissionless settlement, proportional claims, and per-recipient fee accounting.
-- `contracts/TestUSD.sol`: faucet-only test token with no monetary value.
-- `script/Deploy.s.sol`: Foundry deployment script with a Robinhood Chain Testnet chain-ID guard.
-- `test/Launchcast.t.sol`: initial unit tests.
-- `foundry.toml`: compiler and project configuration.
-
-No contracts have been deployed. The Solidity code and tests require passing CI/local Foundry checks and an independent security review before deployment. The VibeVibe getter ABI and semantics also require live testnet verification before any real VibeVibe markets are created.
-
-## Local contract checks
-
-Install Foundry, then run:
-
-```bash
-forge build
-forge test -vv
-```
-
-Copy `.env.example` to `.env` only on your local machine. Never commit a real private key or seed phrase. Use a dedicated testnet wallet and obtain test ETH from the official faucet for gas.
-
-See [contract design and limitations](docs/contract-design.md) before interacting with the contracts.
+LaunchCast is an independent builder project. It isn't affiliated with or endorsed by vibe/vibe or Robinhood.
