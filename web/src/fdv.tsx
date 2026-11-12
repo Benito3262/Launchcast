@@ -71,7 +71,7 @@ export function useFdvMarkets(account?: Address) {
       setMarkets(rows); setError("");
     } catch (e) { setError((e as Error)?.message?.split("\n")[0] || "Could not read FDV markets."); }
   }, [account]);
-  useEffect(() => { void refresh(); const t = window.setInterval(() => void refresh(), 30_000); return () => window.clearInterval(t); }, [refresh]);
+  useEffect(() => { const first = window.setTimeout(() => void refresh(), 1200); const t = window.setInterval(() => void refresh(), 30_000); return () => { window.clearTimeout(first); window.clearInterval(t); }; }, [refresh]);
   return { markets, refresh, error };
 }
 
