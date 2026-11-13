@@ -262,7 +262,7 @@ export default function App() {
         <div className="section-head"><span className="kicker">How it works</span><h2>Simple pools, honest settlement</h2></div>
         <div className="how">
           <div><span className="how-n">01</span><b>A market asks one question</b><p>“Will this launch graduate its bonding curve by the observation time?” or “Will its FDV clear a target 12 or 24 hours after launch?”</p></div>
-          <div><span className="how-n">02</span><b>Stake YES or NO in tUSD</b><p>Both sides pool their stakes. Betting closes before the observation time, and early when a curve graduates.</p></div>
+          <div><span className="how-n">02</span><b>Stake YES or NO in tUSD or $CAST</b><p>Each market is staked in one token, shown on its card: free tUSD, or the LaunchCast project token $CAST. Both sides pool their stakes. Betting closes before the observation time, and early when a curve graduates.</p></div>
           <div><span className="how-n">03</span><b>Settled from chain evidence</b><p>The resolver signs the observed on-chain result (block, block hash, evidence hash). Anyone can challenge it for 30 minutes before it becomes final.</p></div>
           <div><span className="how-n">04</span><b>Winners split the pool</b><p>Winners share the losing pool pro rata. Fees are 0%. If nobody backed the winning side, or nothing is attested within 24h, everyone gets a refund.</p></div>
         </div>

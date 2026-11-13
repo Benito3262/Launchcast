@@ -43,3 +43,8 @@
 .v2-presets button.selected{background:var(--accent);color:#0b0d0f;border-color:var(--accent)}
 .fdv-gauge{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}.fdv-gauge div{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:grid;gap:2px}.fdv-gauge span{color:var(--muted);font-size:12px}.fdv-gauge b{font-size:14px;overflow-wrap:anywhere}.fdv-gauge b.up{color:var(--accent)}.fdv-gauge b.down{color:#ff8a8a}
 .kind-pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line2);margin-right:6px}.kind-pill.fdv{border-color:var(--accent);color:var(--accent)}
+
+.stake-tabs{margin-top:8px}
+.kind-pill.stake-pill.cast{border-color:var(--accent);background:var(--accent);color:#0b0d0f;font-weight:600}
+.kind-pill.stake-pill.tusd{color:var(--muted)}
+.fdv-card.fdv-cast{border-color:color-mix(in srgb,var(--accent) 45%,var(--line2,#2a2f35))}

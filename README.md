@@ -20,6 +20,7 @@
 |---|---|
 | LaunchcastV2 (markets) | [`0x6c03417bb306110f4cbd560a80e0784b7d82e023`](https://explorer.testnet.chain.robinhood.com/address/0x6c03417bb306110f4cbd560a80e0784b7d82e023) |
 | LaunchcastFdv (FDV markets, any launch, verified source) | [`0xda8051febc52f8cbf712c44a04a8d581c5d892e1`](https://explorer.testnet.chain.robinhood.com/address/0xda8051febc52f8cbf712c44a04a8d581c5d892e1) |
+| LaunchcastFdvStake ($CAST-staked FDV markets, verified source) | [`0x1d2d6a4d5D685A1bE373FBd0c443b8C539BDfE14`](https://explorer.testnet.chain.robinhood.com/address/0x1d2d6a4d5D685A1bE373FBd0c443b8C539BDfE14) |
 | TestUSD (tUSD stake token, 6 decimals, public faucet) | [`0x9557aade5c89fe39941b4f3a60cbac16e3f32143`](https://explorer.testnet.chain.robinhood.com/address/0x9557aade5c89fe39941b4f3a60cbac16e3f32143) |
 | Owner / deployer / resolver | [`0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14`](https://explorer.testnet.chain.robinhood.com/address/0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14) |
 | VibeVibe V6 factory (read-only) | [`0xac135da186de8325047ef2afd1d16d5971f731f7`](https://explorer.testnet.chain.robinhood.com/address/0xac135da186de8325047ef2afd1d16d5971f731f7) |
@@ -41,6 +42,10 @@ LaunchCast's project token is **$CAST** (name "Launchcast"), launched on VibeVib
 | VibeVibe page | https://testnet.vibevibe.fun/token/0x23a1fCd0fd08a2868499C2DC695C6AcDC0B2Eeb9 |
 
 The app's **Project token** section shows the $CAST bonding curve live, and the curve is read on-chain every 20 seconds. $CAST is paired with ETH and will be added as a market later.
+
+## $CAST markets (LaunchcastFdvStake)
+
+`$CAST` graduated from its VibeVibe V6 bonding curve on 13 Nov 2026, which unlocks transfers, so it can now be staked. `LaunchcastFdvStake` (deployed 13 Nov 2026 from the owner wallet, tx [`0x94338fc4…`](https://explorer.testnet.chain.robinhood.com/tx/0x94338fc4d264d55fb3081d92939569af9210a757c24cb57f109ccfe41ab7e234)) runs the same FDV markets and settlement as `LaunchcastFdv`, with `$CAST` as the stake token instead of tUSD. Stakes use balance-delta accounting, so a token that taxes or rewards transfers can never leave the pools short. In the app, every card shows its stake token ("Stake $CAST" or "Stake tUSD"), and the markets list can be filtered by stake token. A fork test (`FORK_RPC=https://rpc.testnet.chain.robinhood.com forge test --match-contract LaunchcastFdvStake`) runs a full stake, observe, settle and claim cycle with real `$CAST`.
 
 ## How FDV markets settle (LaunchcastFdv)
 

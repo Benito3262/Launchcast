@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatUnits, parseAbi, parseUnits, zeroAddress, type Address, type Hex, type WalletClient } from "viem";
-import { chain, publicClient, FDV_ADDRESS, STAKE_TOKEN, V6_FACTORY, addr, short } from "./config";
+import { chain, publicClient, FDV_ADDRESS, TUSD_VENUE, V6_FACTORY, addr, short, type Venue } from "./config";
 import { CurvePanel } from "./curve";
 import { deadline, fdvQuestion } from "./question";
 
@@ -19,7 +19,7 @@ export const fdvAbi = parseAbi([
   "function claim(uint256) returns (uint256)",
   "function createMarket(address,uint256,uint64,uint64) returns (uint256)",
 ]);
-const erc20 = parseAbi(["function name() view returns (string)", "function symbol() view returns (string)", "function decimals() view returns (uint8)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"]);
+const erc20 = parseAbi(["function balanceOf(address) view returns (uint256)", "function name() view returns (string)", "function symbol() view returns (string)", "function decimals() view returns (uint8)", "function allowance(address,address) view returns (uint256)", "function approve(address,uint256) returns (bool)"]);
 const factoryAbi = parseAbi(["function tokenOfLaunch(uint256) view returns (address)", "function isV6Token(address) view returns (bool)"]);
 export const OBS_WINDOW = 3600n;
 
@@ -27,7 +27,7 @@ export type FdvMarket = {
   id: bigint; token: Address; curve: Address; pairCurrency: Address; closeAt: bigint; observeAt: bigint; status: number; outcomeYes: boolean;
   obsCount: number; lastObsTime: bigint; thresholdFdv: bigint; fdvAtCreation: bigint; settledFdv: bigint; yesPool: bigint; noPool: bigint;
   name?: string; symbol?: string; pairSymbol: string; pairDecimals: number; fdvNow?: bigint; graduated?: boolean;
-  yes: bigint; no: bigint; claimed: boolean; claimable: bigint;
+  yes: bigint; no: bigint; claimed: boolean; claimable: bigint; venue: Venue;
 };
 
 async function pairMeta(pair: Address): Promise<[string, number]> {
@@ -39,25 +39,27 @@ async function pairMeta(pair: Address): Promise<[string, number]> {
   return [s as string, Number(d)];
 }
 
-export function useFdvMarkets(account?: Address) {
+export function useFdvMarkets(account?: Address, venue: Venue = TUSD_VENUE) {
   const [markets, setMarkets] = useState<FdvMarket[]>([]);
+  const [balance, setBalance] = useState<bigint>();
+  const V = venue.address;
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     try {
-      const count = await publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "marketCount" });
+      const count = await publicClient.readContract({ address: V, abi: fdvAbi, functionName: "marketCount" });
       const ids = Array.from({ length: Number(count) }, (_, i) => BigInt(i + 1)).reverse();
       const rows = await Promise.all(ids.map(async id => {
-        const m = await publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "getMarket", args: [id] });
+        const m = await publicClient.readContract({ address: V, abi: fdvAbi, functionName: "getMarket", args: [id] });
         const [name, symbol, [pairSymbol, pairDecimals], live, pos] = await Promise.all([
           publicClient.readContract({ address: m.token, abi: erc20, functionName: "name" }).catch(() => undefined),
           publicClient.readContract({ address: m.token, abi: erc20, functionName: "symbol" }).catch(() => undefined),
           pairMeta(m.pairCurrency),
-          publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "currentFdv", args: [m.token] }).catch(() => undefined),
+          publicClient.readContract({ address: V, abi: fdvAbi, functionName: "currentFdv", args: [m.token] }).catch(() => undefined),
           account ? Promise.all([
-            publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "yesStake", args: [id, account] }),
-            publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "noStake", args: [id, account] }),
-            publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "hasClaimed", args: [id, account] }),
-            publicClient.readContract({ address: FDV_ADDRESS, abi: fdvAbi, functionName: "claimable", args: [id, account] }),
+            publicClient.readContract({ address: V, abi: fdvAbi, functionName: "yesStake", args: [id, account] }),
+            publicClient.readContract({ address: V, abi: fdvAbi, functionName: "noStake", args: [id, account] }),
+            publicClient.readContract({ address: V, abi: fdvAbi, functionName: "hasClaimed", args: [id, account] }),
+            publicClient.readContract({ address: V, abi: fdvAbi, functionName: "claimable", args: [id, account] }),
           ]) : Promise.resolve([0n, 0n, false, 0n] as const),
         ]);
         return {
@@ -65,14 +67,15 @@ export function useFdvMarkets(account?: Address) {
           outcomeYes: m.outcomeYes, obsCount: m.obsCount, lastObsTime: m.lastObsTime, thresholdFdv: m.thresholdFdv, fdvAtCreation: m.fdvAtCreation,
           settledFdv: m.settledFdv, yesPool: m.yesPool, noPool: m.noPool, name: name as string | undefined, symbol: symbol as string | undefined,
           pairSymbol, pairDecimals, fdvNow: live?.[0], graduated: live?.[1],
-          yes: pos[0] as bigint, no: pos[1] as bigint, claimed: pos[2] as boolean, claimable: pos[3] as bigint,
+          yes: pos[0] as bigint, no: pos[1] as bigint, claimed: pos[2] as boolean, claimable: pos[3] as bigint, venue,
         } satisfies FdvMarket;
       }));
       setMarkets(rows); setError("");
-    } catch (e) { setError((e as Error)?.message?.split("\n")[0] || "Could not read FDV markets."); }
-  }, [account]);
+      if (account) setBalance(await publicClient.readContract({ address: venue.stakeToken, abi: erc20, functionName: "balanceOf", args: [account] }).catch(() => undefined)); else setBalance(undefined);
+    } catch (e) { setError((e as Error)?.message?.split("\n")[0] || `Could not read ${venue.label} FDV markets.`); }
+  }, [account, V, venue]);
   useEffect(() => { const first = window.setTimeout(() => void refresh(), 1200); const t = window.setInterval(() => void refresh(), 30_000); return () => { window.clearTimeout(first); window.clearInterval(t); }; }, [refresh]);
-  return { markets, refresh, error };
+  return { markets, refresh, error, balance };
 }
 
 export type Phase = "open" | "resolving" | "resolved";
@@ -85,8 +88,10 @@ const fmt = (v: bigint, d: number) => Number(formatUnits(v, d)).toLocaleString(u
 
 type Tx = (label: string, run: (c: WalletClient, u: Address) => Promise<Hex>) => Promise<void>;
 
-export function FdvCard({ m, account, busy, transact, stakeDecimals }: { m: FdvMarket; account?: Address; busy: string; transact: Tx; stakeDecimals: number }) {
+export function FdvCard({ m, account, busy, transact, balance }: { m: FdvMarket; account?: Address; busy: string; transact: Tx; balance?: bigint }) {
   const [amount, setAmount] = useState("");
+  const { address: V, stakeToken, symbol: sym, decimals: stakeDecimals } = m.venue;
+  const isCast = m.venue.key === "cast";
   const now = BigInt(Math.floor(Date.now() / 1000));
   const phase = fdvPhase(m, now);
   const inWindow = m.status === 0 && now >= m.observeAt && now <= m.observeAt + OBS_WINDOW && m.obsCount < 3;
@@ -97,14 +102,17 @@ export function FdvCard({ m, account, busy, transact, stakeDecimals }: { m: FdvM
   async function bet(yes: boolean) {
     let v: bigint;
     try { v = parseUnits(amount || "0", stakeDecimals); if (v <= 0n) throw new Error(); } catch { return; }
-    await transact(`Place ${yes ? "YES" : "NO"} on FDV market #${m.id}`, async (c, u) => {
-      const allowance = await publicClient.readContract({ address: STAKE_TOKEN, abi: erc20, functionName: "allowance", args: [u, FDV_ADDRESS] });
-      if (allowance < v) { const h = await c.writeContract({ account: u, chain, address: STAKE_TOKEN, abi: erc20, functionName: "approve", args: [FDV_ADDRESS, v] }); await publicClient.waitForTransactionReceipt({ hash: h }); }
-      return c.writeContract({ account: u, chain, address: FDV_ADDRESS, abi: fdvAbi, functionName: "placeBet", args: [m.id, yes, v] });
-    });
+    if (!account) return;
+    const allowance = await publicClient.readContract({ address: stakeToken, abi: erc20, functionName: "allowance", args: [account, V] });
+    if (allowance < v) {
+      await transact(`Approve ${sym} for ${m.venue.label} market #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: stakeToken, abi: erc20, functionName: "approve", args: [V, v] }));
+      const after = await publicClient.readContract({ address: stakeToken, abi: erc20, functionName: "allowance", args: [account, V] });
+      if (after < v) return;
+    }
+    await transact(`Place ${yes ? "YES" : "NO"} on ${m.venue.label} market #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: V, abi: fdvAbi, functionName: "placeBet", args: [m.id, yes, v] }));
   }
-  return <article className="v2-market-card fdv-card">
-    <div className="v2-card-top"><span className={"v2-status status-" + (m.status === 0 ? 0 : m.status === 1 ? 3 : 4)}>{statusLabel}</span><span><i className="kind-pill fdv">FDV · on-chain</i>#{m.id.toString()} · {m.graduated ? "graduated · v4 pool" : "on curve"}</span></div>
+  return <article className={"v2-market-card fdv-card" + (isCast ? " fdv-cast" : "")}>
+    <div className="v2-card-top"><span className={"v2-status status-" + (m.status === 0 ? 0 : m.status === 1 ? 3 : 4)}>{statusLabel}</span><span><i className={"kind-pill stake-pill " + m.venue.key}>Stake {sym}</i><i className="kind-pill fdv">FDV · on-chain</i>{isCast ? "C" : ""}#{m.id.toString()} · {m.graduated ? "graduated · v4 pool" : "on curve"}</span></div>
     <h3>{fdvQuestion(m.name, m.symbol, m.thresholdFdv, m.pairDecimals, m.pairSymbol, m.observeAt)}</h3>
     <div className="fdv-gauge">
       <div><span>FDV now</span><b className={m.fdvNow !== undefined && m.fdvNow >= m.thresholdFdv ? "up" : "down"}>{m.fdvNow !== undefined ? fmt(m.fdvNow, m.pairDecimals) : "—"} {m.pairSymbol}</b></div>
@@ -114,15 +122,16 @@ export function FdvCard({ m, account, busy, transact, stakeDecimals }: { m: FdvM
     {!m.graduated && <CurvePanel curve={m.curve} title="Bonding curve now" />}
     <div className="v2-addresses"><span>Token <a href={addr(m.token)} target="_blank" rel="noreferrer">{short(m.token)} ↗</a></span><span>Pair {m.pairSymbol}</span></div>
     <div className="v2-dates"><span>Bets close <b>{deadline(m.closeAt)}</b></span><span>Observed <b>{deadline(m.observeAt)}</b> + 1h window</span></div>
-    <div className="v2-pools"><div><span>YES pool</span><b>{fmt(m.yesPool, stakeDecimals)} tUSD</b></div><div><span>NO pool</span><b>{fmt(m.noPool, stakeDecimals)} tUSD</b></div><div><span>Total</span><b>{fmt(total, stakeDecimals)} tUSD</b></div></div>
-    {(m.yes > 0n || m.no > 0n) && <div className="v2-position">Your position · YES {fmt(m.yes, stakeDecimals)} / NO {fmt(m.no, stakeDecimals)} tUSD{m.claimed ? " · Claimed" : ""}</div>}
-    {phase === "open" && account && <div className="v2-bet"><input inputMode="decimal" placeholder="Stake in tUSD" value={amount} onChange={e => setAmount(e.target.value)} /><button disabled={!!busy} onClick={() => void bet(true)}>YES</button><button disabled={!!busy} onClick={() => void bet(false)}>NO</button></div>}
+    <div className="v2-pools"><div><span>YES pool</span><b>{fmt(m.yesPool, stakeDecimals)} {sym}</b></div><div><span>NO pool</span><b>{fmt(m.noPool, stakeDecimals)} {sym}</b></div><div><span>Total</span><b>{fmt(total, stakeDecimals)} {sym}</b></div></div>
+    {(m.yes > 0n || m.no > 0n) && <div className="v2-position">Your position · YES {fmt(m.yes, stakeDecimals)} / NO {fmt(m.no, stakeDecimals)} {sym}{m.claimed ? " · Claimed" : ""}</div>}
+    {phase === "open" && account && <div className="v2-bet"><input inputMode="decimal" placeholder={"Stake in " + sym} value={amount} onChange={e => setAmount(e.target.value)} /><button disabled={!!busy} onClick={() => void bet(true)}>YES</button><button disabled={!!busy} onClick={() => void bet(false)}>NO</button></div>}
+    {phase === "open" && account && balance !== undefined && <p className="v2-muted">Your {sym} balance: {fmt(balance, stakeDecimals)}{isCast && balance === 0n ? " · buy $CAST on VibeVibe to stake" : ""}. First stake asks for a one-time {sym} approval, then the bet.</p>}
     {phase === "open" && !account && <p className="v2-muted">Connect your wallet to take a position.</p>}
     {m.status === 0 && m.obsCount > 0 && <p className="v2-muted">Observations recorded: {m.obsCount}/3</p>}
-    {inWindow && account && <button className="v2-action" disabled={!!busy || !spacingOk} onClick={() => void transact(`Record FDV observation for #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: FDV_ADDRESS, abi: fdvAbi, functionName: "observe", args: [m.id] }))}>{spacingOk ? `Record observation (${m.obsCount + 1}/3)` : "Next observation in ~30s"}</button>}
-    {canSettle && account && <button className="v2-action" disabled={!!busy} onClick={() => void transact(`Settle FDV market #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: FDV_ADDRESS, abi: fdvAbi, functionName: "settle", args: [m.id] }))}>Settle market</button>}
+    {inWindow && account && <button className="v2-action" disabled={!!busy || !spacingOk} onClick={() => void transact(`Record observation for ${m.venue.label} #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: V, abi: fdvAbi, functionName: "observe", args: [m.id] }))}>{spacingOk ? `Record observation (${m.obsCount + 1}/3)` : "Next observation in ~30s"}</button>}
+    {canSettle && account && <button className="v2-action" disabled={!!busy} onClick={() => void transact(`Settle ${m.venue.label} market #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: V, abi: fdvAbi, functionName: "settle", args: [m.id] }))}>Settle market</button>}
     {m.status === 1 && <p className="v2-result">Median FDV {fmt(m.settledFdv, m.pairDecimals)} {m.pairSymbol} → {m.outcomeYes ? "YES" : "NO"} won</p>}
-    {m.claimable > 0n && account && <button className="v2-claim" disabled={!!busy} onClick={() => void transact(`Claim FDV market #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: FDV_ADDRESS, abi: fdvAbi, functionName: "claim", args: [m.id] }))}>Claim {fmt(m.claimable, stakeDecimals)} tUSD</button>}
+    {m.claimable > 0n && account && <button className="v2-claim" disabled={!!busy} onClick={() => void transact(`Claim ${m.venue.label} market #${m.id}`, (c, u) => c.writeContract({ account: u, chain, address: V, abi: fdvAbi, functionName: "claim", args: [m.id] }))}>Claim {fmt(m.claimable, stakeDecimals)} {sym}</button>}
   </article>;
 }
 
@@ -131,7 +140,9 @@ const toLocal = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_0
 type IndexRow = [number, Address, string, string, number, Address, number, number];
 type LaunchIndex = { generatedAt: number; pairSymbols: Record<string, string>; rows: IndexRow[] };
 
-export function FdvCreate({ busy, transact, onDone }: { busy: string; transact: Tx; onDone: () => void }) {
+export function FdvCreate({ busy, transact, onDone, venues }: { busy: string; transact: Tx; onDone: () => void; venues: Venue[] }) {
+  const [venueKey, setVenueKey] = useState(venues[0].key);
+  const venue = venues.find(v => v.key === venueKey) ?? venues[0];
   const [query, setQuery] = useState("");
   const [index, setIndex] = useState<LaunchIndex | null>(null);
   const [search, setSearch] = useState("");
@@ -181,13 +192,14 @@ export function FdvCreate({ busy, transact, onDone }: { busy: string; transact: 
       const t = parseUnits(threshold, info.pairDecimals);
       const o = BigInt(Math.floor(new Date(observeAt).getTime() / 1000)), c = BigInt(Math.floor(new Date(closeAt).getTime() / 1000));
       if (t <= 0n || c >= o || c * 1000n <= BigInt(Date.now())) throw new Error("Check the threshold and times: betting must close in the future, before the observation time.");
-      await transact("Create FDV market", (cl, u) => cl.writeContract({ account: u, chain, address: FDV_ADDRESS, abi: fdvAbi, functionName: "createMarket", args: [info.token, t, c, o] }));
+      await transact(`Create ${venue.label} FDV market`, (cl, u) => cl.writeContract({ account: u, chain, address: venue.address, abi: fdvAbi, functionName: "createMarket", args: [info.token, t, c, o] }));
       onDone();
     } catch (e) { setErr((e as Error).message.split("\n")[0]); }
   }
   return <section className="v2-create">
     <span className="eyebrow">OWNER CONTROLS · ANY LAUNCH</span><h2>Create an FDV market</h2>
     <p>Works for every VibeVibe V6 launch: any age, still on its curve or graduated, and any pair. It settles from on-chain state as the median of up to 3 observations in the hour after the deadline.</p>
+    <div className="v2-presets"><span>Stake token</span>{venues.map(v => <button key={v.key} type="button" className={venueKey === v.key ? "selected" : ""} onClick={() => setVenueKey(v.key)}>{v.label}</button>)}</div>
     <label>Token address or launch number<div className="fdv-lookup"><input value={query} onChange={e => setQuery(e.target.value)} placeholder="0x… or #1064" /><button type="button" className="v2-action" onClick={() => void lookup()}>Look up</button></div></label>
     <div className="fdv-picker">
       <div className="fdv-picker-head"><input value={search} onChange={e => setSearch(e.target.value)} placeholder={index ? `Search all ${index.rows.length.toLocaleString()} V6 launches by name, ticker or #` : "Loading launch index…"} aria-label="Search all launches" />
@@ -204,7 +216,7 @@ export function FdvCreate({ busy, transact, onDone }: { busy: string; transact: 
       <div className="v2-presets"><span>Deadline</span>{([["1 hour", 3600], ["24 hours", 86400], ["7 days", 604800]] as const).map(([l, s]) => <button key={l} type="button" onClick={() => preset(s)}>{l}</button>)}</div>
       <label>Observation time<input type="datetime-local" step="1" value={observeAt} onChange={e => setObserveAt(e.target.value)} /></label>
       <label>Betting closes<input type="datetime-local" step="1" value={closeAt} onChange={e => setCloseAt(e.target.value)} /></label>
-      <button className="v2-create-button" disabled={!!busy} onClick={() => void create()}>{busy === "Create FDV market" ? "Creating…" : "Create FDV market"}</button>
+      <button className="v2-create-button" disabled={!!busy} onClick={() => void create()}>{busy === `Create ${venue.label} FDV market` ? "Creating…" : `Create ${venue.label} FDV market`}</button>
     </>}
   </section>;
 }
