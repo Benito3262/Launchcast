@@ -91,19 +91,33 @@ contract LaunchcastFdvStakeTest {
     address constant CAST_HOLDER = 0xC4a6C632A5090f241c43d1d21CA382a95Eb42dA1;
     address constant VIBEGOLD = 0x05A4813CD56666c80548A99f9102A0cf7d21Cc73; // graduated V6 token
     address constant VIBEGOLD_HOLDER = 0xbd48123F04d831aEC0eE68772A18457a7c372267;
-    bytes4 constant TRANSFERS_LOCKED = 0xdb89e3f4; // TransfersLocked()
+    address constant CAST_OWNER = 0x54032f2d6aDc9b327F5f2222D5AE1d6346a2Cb14;
 
-    function testForkCastStakeIsLockedUntilGraduation() public {
+    /// $CAST graduated on Nov 13, 2026: transfers are unlocked, so $CAST works as the stake token end to end.
+    function testForkCastStakeFullLifecycleAfterGraduation() public {
         string memory rpc = vm.envOr("FORK_RPC", string(""));
         if (bytes(rpc).length == 0) return;
         vm.createSelectFork(rpc);
         LaunchcastFdvStake s = new LaunchcastFdvStake(FACTORY, CAST, address(this));
         (uint256 f, bool g,,) = s.currentFdv(CAST);
-        require(f > 0 && !g, "CAST reads on-curve FDV");
-        uint256 id = s.createMarket(CAST, f * 2, uint64(block.timestamp + 3600), uint64(block.timestamp + 7200));
-        vm.prank(CAST_HOLDER); IERC20S(CAST).approve(address(s), type(uint256).max);
-        vm.prank(CAST_HOLDER); vm.expectRevert(TRANSFERS_LOCKED);
-        s.placeBet(id, true, 1000e18);
+        require(f > 0 && g, "CAST graduated, FDV read from its v4 pool");
+        uint256 id = s.createMarket(CAST, f, uint64(block.timestamp + 60), uint64(block.timestamp + 120));
+        address u2 = vm.addr(9);
+        vm.prank(CAST_OWNER); IERC20S(CAST).transfer(u2, 1000e18);
+        vm.prank(CAST_OWNER); IERC20S(CAST).approve(address(s), type(uint256).max);
+        vm.prank(u2); IERC20S(CAST).approve(address(s), type(uint256).max);
+        vm.prank(CAST_OWNER); s.placeBet(id, true, 1000e18);
+        vm.prank(u2); s.placeBet(id, false, 500e18);
+        LaunchcastFdvStake.Market memory m = s.getMarket(id);
+        require(uint256(m.yesPool) + m.noPool <= IERC20S(CAST).balanceOf(address(s)), "solvent");
+        vm.warp(block.timestamp + 120);
+        for (uint256 k; k < 3; k++) { s.observe(id); vm.warp(block.timestamp + 31); vm.roll(block.number + 1); }
+        s.settle(id);
+        uint256 owed = s.claimable(id, CAST_OWNER);
+        require(owed == uint256(m.yesPool) + m.noPool, "YES (FDV unchanged = at threshold) takes both pools");
+        uint256 before = IERC20S(CAST).balanceOf(CAST_OWNER);
+        vm.prank(CAST_OWNER); s.claim(id);
+        require(IERC20S(CAST).balanceOf(CAST_OWNER) >= before + owed - owed / 100, "paid");
     }
 
     function testForkGraduatedV6TokenAsStakeFullLifecycle() public {
