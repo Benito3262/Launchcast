@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "chainId": 46630,
   "source": "Robinhood Chain Testnet factory curveAt reads cross-checked against token/curve getters; recent launch event logs enrich records when available",
-  "generatedAt": "2026-11-25T21:49:09.008Z",
-  "headBlock": "157941080",
-  "safeHeadBlock": "157941048",
+  "generatedAt": "2026-11-26T08:34:50.226Z",
+  "headBlock": "158086502",
+  "safeHeadBlock": "158086470",
   "coverage": "configured_factories_incremental_plus_latest_launches",
   "warning": "Only three configured factory generations are scanned; unknown/new factories may be missing. Current token/curve getter reads are snapshots at stateReadAtBlock, not historical facts. This file is discovery data only and is never settlement authority.",
   "factories": [
@@ -32,16 +32,103 @@
       "generation": "current",
       "address": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
       "bytecodePresent": true,
-      "onChainLaunchCount": "179189",
+      "onChainLaunchCount": "179192",
       "deploymentBlock": "115025604",
-      "observedLaunchEvents": 14984,
+      "observedLaunchEvents": 14987,
       "launchCountMatchesEventCount": null,
       "eventAuditStatus": null
     }
   ],
   "totalTokens": 36,
-  "totalLaunches": 242482,
+  "totalLaunches": 242485,
   "tokens": [
+    {
+      "chainId": 46630,
+      "generation": "current",
+      "factory": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
+      "launchId": "179191",
+      "token": "0x5514d672225F229a8458Afa1Fc37f32a0A439B62",
+      "curve": "0x2Cc85E51a190aE957ceAE37e1278ECEf5bcFFDA7",
+      "creator": "0x93438d247Dbc1C13bff0C2dCF3bf19CC6043A0c9",
+      "creatorFeeRecipient": "0x93438d247Dbc1C13bff0C2dCF3bf19CC6043A0c9",
+      "creatorVault": "0xe4CaD8B588B10be798227432561bdce743541a5A",
+      "quoteCurrency": null,
+      "initialBuy": "500000000000000",
+      "initialTokensBought": "300151401143160572511117",
+      "metadataSchemaVersion": 1,
+      "metadataDigest": "0xe0590aba1c0c2708396253833d78ee53f76b60ee1ee59f0d05b17aa699f87c46",
+      "metadataURI": "ipfs://bafkreif75f6b73374d15824f4a088ff7e47e0afc2dd10fe",
+      "blockNumber": 157972989,
+      "blockHash": "0x975b6a03da6c2c258f48cac1512e7bb8206fac0c567555ad61acd13920c1b1af",
+      "transactionHash": "0xe060fbb48c506bf069c2b4a9bb7ee56eee8959ae203afcdc0dbb3f03cdc8163a",
+      "logIndex": 4,
+      "launchTimestamp": "1795653348",
+      "name": "Cozy PadX",
+      "symbol": "COPADX",
+      "decimals": 18,
+      "transfersUnlocked": false,
+      "graduated": false,
+      "complete": false,
+      "stateReadAtBlock": "158086470"
+    },
+    {
+      "chainId": 46630,
+      "generation": "current",
+      "factory": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
+      "launchId": "179190",
+      "token": "0x7b47d4341414874F5573E217B26d7e9D38Cf39D2",
+      "curve": "0x91136ff4faee930d3B03F7Ddac35BCC5EA32e33A",
+      "creator": "0x08575dEAdf22408b1930DD2f01DC7E3D8BDa2926",
+      "creatorFeeRecipient": "0x08575dEAdf22408b1930DD2f01DC7E3D8BDa2926",
+      "creatorVault": "0x85CD84C1eBe2df11f2D7Af392aB0CA616E9e98f8",
+      "quoteCurrency": null,
+      "initialBuy": "0",
+      "initialTokensBought": "0",
+      "metadataSchemaVersion": 1,
+      "metadataDigest": "0xed1d5c7cc37ae9c4e1f9a8c422299312299b04d79e321b3137aa0559608fa665",
+      "metadataURI": "ipfs://bafybeigc827ea1ab46a0ed7d13664fba60c7c74c04541f1a660b97a",
+      "blockNumber": 157971781,
+      "blockHash": "0x2b9601bbe76c5093fe12ce1f7a369a0fedf0267507359aa497f328909a242902",
+      "transactionHash": "0x67bd229007768560cb2f5532631e94a19063561c9610712021d2858c3cb5fe64",
+      "logIndex": 2,
+      "launchTimestamp": "1795653025",
+      "name": "Phantom Vault",
+      "symbol": "VAULT",
+      "decimals": 18,
+      "transfersUnlocked": false,
+      "graduated": false,
+      "complete": false,
+      "stateReadAtBlock": "158086470"
+    },
+    {
+      "chainId": 46630,
+      "generation": "current",
+      "factory": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
+      "launchId": "179189",
+      "token": "0x3d947AecC7Df2fD81137c8f919c43F7830C2C72B",
+      "curve": "0x4398e643aa334F7Df654340D11b3c041A2EF1274",
+      "creator": "0xf93249741eEDEDdF17F795969bCd58971cFafD5f",
+      "creatorFeeRecipient": "0xf93249741eEDEDdF17F795969bCd58971cFafD5f",
+      "creatorVault": "0x2F5bC53048EcFFcf2Bdd010fcDcB55d82c8399f1",
+      "quoteCurrency": null,
+      "initialBuy": "0",
+      "initialTokensBought": "0",
+      "metadataSchemaVersion": 1,
+      "metadataDigest": "0x41ae2712e41b51f2b0663a1fa7f8c47cbf2beb0d6166bc265275dc8abb0aa676",
+      "metadataURI": "ipfs://bafybeig573658e5495e3dadbd7f450a9ecbc11a62e34a81e288e56b",
+      "blockNumber": 157971501,
+      "blockHash": "0x977f702e4ba67756e6cf4333d7f4bc536f99f5b5783b4563af8c68f8d17ced53",
+      "transactionHash": "0x61e74ee723debe87fcfa3c76685ca8a1e12f7d7d6fc141cca03c86edae999a55",
+      "logIndex": 2,
+      "launchTimestamp": "1795652967",
+      "name": "Sherwood Knight",
+      "symbol": "SKNIGH",
+      "decimals": 18,
+      "transfersUnlocked": false,
+      "graduated": false,
+      "complete": false,
+      "stateReadAtBlock": "158086470"
+    },
     {
       "chainId": 46630,
       "generation": "current",
@@ -69,7 +156,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -98,7 +185,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -127,7 +214,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -156,7 +243,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -185,7 +272,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -214,7 +301,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -243,7 +330,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -272,7 +359,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -301,94 +388,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
-    },
-    {
-      "chainId": 46630,
-      "generation": "current",
-      "factory": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
-      "launchId": "179179",
-      "token": "0xcE4E51fd832923f5407b98FAa5D256c695A3bBff",
-      "curve": "0x6e95f829c474EC71D8865C81d5c3dCB1aA2C4959",
-      "creator": "0xd8050df58218CA30286f165B89a90719a0506412",
-      "creatorFeeRecipient": "0xd8050df58218CA30286f165B89a90719a0506412",
-      "creatorVault": "0xf3AF69a36641F80aCD6ea86a2Dd6771caaC99017",
-      "quoteCurrency": null,
-      "initialBuy": "1000000000000000",
-      "initialTokensBought": "600134925922024367305383",
-      "metadataSchemaVersion": 1,
-      "metadataDigest": "0x8d02a0bfbdf7be22c38e254bc12214322fd3ddcca2a105b4e6147372a762d7c3",
-      "metadataURI": "ipfs://bafkreienfm3xdovgpp4cqprzcx6qfcxs6gc5kfsfsslfp4fy5p7tiu3qcq",
-      "blockNumber": 157327280,
-      "blockHash": "0x664c54e9de22222e415709a1331922ddf302d8ab5d75f8c8ee8a888b9439bad8",
-      "transactionHash": "0x755aa96d07f486e20e66f864d7464b57359f22c450937c3517248b5f18bc950c",
-      "logIndex": 4,
-      "launchTimestamp": "1795502740",
-      "name": "Vibe0B4B",
-      "symbol": "V0B4",
-      "decimals": 18,
-      "transfersUnlocked": false,
-      "graduated": false,
-      "complete": false,
-      "stateReadAtBlock": "157941048"
-    },
-    {
-      "chainId": 46630,
-      "generation": "current",
-      "factory": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
-      "launchId": "179178",
-      "token": "0xf2ED0d0449F656c71BEb57fBc31F87Fba335145A",
-      "curve": "0x0e4fB7c8485Fb6015080BDeaCF1b423F915e26A8",
-      "creator": "0x40fCa108e566A486003AC0AEC44e2F9F7f2AdB4B",
-      "creatorFeeRecipient": "0x40fCa108e566A486003AC0AEC44e2F9F7f2AdB4B",
-      "creatorVault": "0x2c9443a4f6a578ED26739D3808c9a8800e2D045B",
-      "quoteCurrency": null,
-      "initialBuy": "1000000000000000",
-      "initialTokensBought": "600134925922024367305383",
-      "metadataSchemaVersion": 1,
-      "metadataDigest": "0xccae9ab672e81f77979c1be665c77d6ea0f0b73aef3c2325c32ef245d79d4917",
-      "metadataURI": "ipfs://bafkreickniox6qvfu56meyw7uuiogz2yrz5jpa7542bz6iy2cyci5oiva4",
-      "blockNumber": 157326992,
-      "blockHash": "0x5bc3327fb8d74f3776016a0f4dc473ff5debb38cbc920d2c3b5bf049c5258635",
-      "transactionHash": "0xc9eb3c39ad4d3657ea016236a9dfae07c96944f90075df3c298845456eafe220",
-      "logIndex": 4,
-      "launchTimestamp": "1795502679",
-      "name": "Vibe7ABB",
-      "symbol": "V7AB",
-      "decimals": 18,
-      "transfersUnlocked": false,
-      "graduated": false,
-      "complete": false,
-      "stateReadAtBlock": "157941048"
-    },
-    {
-      "chainId": 46630,
-      "generation": "current",
-      "factory": "0x40f1be6faf8DAB9C143cce1a0A04c2075Fb2DF59",
-      "launchId": "179177",
-      "token": "0xCaD9d0ecfF13E1cC30Fc9362D80d1fBFE1691FB9",
-      "curve": "0xaB4490bd198AD9c9d8e4B08672F6c47c6a071BC5",
-      "creator": "0x318A879BE9CeD6E9eb92E498F423d9a712e765A0",
-      "creatorFeeRecipient": "0x318A879BE9CeD6E9eb92E498F423d9a712e765A0",
-      "creatorVault": "0x5B04D114DAc6512556b58eDB6d661Ef7c3CCb71e",
-      "quoteCurrency": null,
-      "initialBuy": "1000000000000000",
-      "initialTokensBought": "600134925922024367305383",
-      "metadataSchemaVersion": 1,
-      "metadataDigest": "0x262cb24a08df55797175954e34c9f334e6e7904b4cb31cda32a19c38c489bc0f",
-      "metadataURI": "ipfs://bafkreiawl3js6pg7kilpaxxttzzmsrgvszt533tqcmfr3ehb73needjqk4",
-      "blockNumber": 157326727,
-      "blockHash": "0x0860595e15be4d6275705ff4dd911fe2aa6409c25b98f03b983ff46bc73a2c61",
-      "transactionHash": "0xf8bbfe0e09823be75a98e55a2afe282fcab837732ac58a4f20ef4673216651c3",
-      "logIndex": 11,
-      "launchTimestamp": "1795502620",
-      "name": "VibeB703",
-      "symbol": "VB70",
-      "decimals": 18,
-      "transfersUnlocked": false,
-      "graduated": false,
-      "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -417,7 +417,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -446,7 +446,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -475,7 +475,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -504,7 +504,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -533,7 +533,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -562,7 +562,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -591,7 +591,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -620,7 +620,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -649,7 +649,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -678,7 +678,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -707,7 +707,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -736,7 +736,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -765,7 +765,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -794,7 +794,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -823,7 +823,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -852,7 +852,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -881,7 +881,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -910,7 +910,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -939,7 +939,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -968,7 +968,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -997,7 +997,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -1026,7 +1026,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -1055,7 +1055,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     },
     {
       "chainId": 46630,
@@ -1084,7 +1084,7 @@
       "transfersUnlocked": false,
       "graduated": false,
       "complete": false,
-      "stateReadAtBlock": "157941048"
+      "stateReadAtBlock": "158086470"
     }
   ]
 }
