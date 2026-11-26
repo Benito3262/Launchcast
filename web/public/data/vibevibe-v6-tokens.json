@@ -2,13 +2,13 @@
   "schemaVersion": 2,
   "chainId": 46630,
   "source": "Read-only active V6 factory, curve, token, locker and Uniswap V4 PoolManager reads",
-  "generatedAt": "2026-11-26T08:35:01.588Z",
+  "generatedAt": "2026-11-26T21:42:13.974Z",
   "factory": "0xac135da186de8325047ef2afd1d16d5971f731f7",
   "factoryLocker": "0xcF7D6547bc11992a6c492e508E701c79B8393930",
   "poolManager": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
   "hook": "0xE61e46724BA5DEC31f2be031106558774A65e8ec",
   "factoryLaunchCount": "13074",
-  "readAtBlock": "158086490",
+  "readAtBlock": "158270451",
   "status": "sampled_records_validated",
   "sampledLaunchIdRange": {
     "first": "13034",
@@ -48,9 +48,9 @@
       "pairSymbol": "ETH",
       "pairDecimals": 18,
       "complete": false,
-      "sold": "204625961949623126618244647",
+      "sold": "204664548205899731329225642",
       "targetPairUnits": "4000000000000000000",
-      "pairPrincipal": "316498530104081500",
+      "pairPrincipal": "316572382399490681",
       "createdAt": "1795495937",
       "currentRateBps": "100",
       "pricing": {
@@ -59,17 +59,17 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
-        "pricePairPerTokenScaled1e18": "1930469179",
-        "fdvPairScaled1e18": "1930469179000000000",
+        "readAtBlock": "158270451",
+        "pricePairPerTokenScaled1e18": "1930641959",
+        "fdvPairScaled1e18": "1930641959000000000",
         "quoteInput": "1000000000000000",
-        "grossTokensOut": "521143990402538839131426",
-        "netTokensOut": "516974838479318528418375",
+        "grossTokensOut": "521097351148649603454321",
+        "netTokensOut": "516928572339460406626687",
         "pairCost": "998003992015968",
         "pairFee": "1996007984031",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -98,7 +98,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1755510446",
         "fdvPairScaled1e18": "1755510446000000000",
         "quoteInput": "1000000000000000",
@@ -108,7 +108,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -137,7 +137,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1662697415",
         "fdvPairScaled1e18": "1662697415000000000",
         "quoteInput": "1000000000000000",
@@ -147,7 +147,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -176,7 +176,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1883148965",
         "fdvPairScaled1e18": "1883148965000000000",
         "quoteInput": "1000000000000000",
@@ -186,7 +186,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -215,7 +215,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "4384594940",
         "fdvPairScaled1e18": "4384594940000000000",
         "quoteInput": "1000000000000000",
@@ -225,7 +225,7 @@
         "pairFee": "7690793275795",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -254,7 +254,7 @@
         "pairCurrency": "0x2A9F3D3d8E5Bb7B39fBFb2826833693Be5daca38",
         "pairSymbol": "VIBEVIBEFINAL",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "52978202590660",
         "fdvPairScaled1e18": "52978202590660000000000",
         "quoteInput": "1000000000000000",
@@ -264,7 +264,7 @@
         "pairFee": "6940295661679",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -293,7 +293,7 @@
         "pairCurrency": "0xba163e9887d54A854323B41fcA9cf64a1c275Ac9",
         "pairSymbol": "SPCX",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "307298955",
         "fdvPairScaled1e18": "307298955000000000",
         "quoteInput": "1000000000000000",
@@ -303,7 +303,7 @@
         "pairFee": "7690793275795",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -332,7 +332,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1719349119",
         "fdvPairScaled1e18": "1719349119000000000",
         "quoteInput": "1000000000000000",
@@ -342,7 +342,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -371,7 +371,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1824751227",
         "fdvPairScaled1e18": "1824751227000000000",
         "quoteInput": "1000000000000000",
@@ -381,7 +381,7 @@
         "pairFee": "1996007984031",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -410,7 +410,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1603849737",
         "fdvPairScaled1e18": "1603849737000000000",
         "quoteInput": "1000000000000000",
@@ -420,7 +420,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -449,7 +449,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1303520259",
         "fdvPairScaled1e18": "1303520259000000000",
         "quoteInput": "1000000000000000",
@@ -459,7 +459,7 @@
         "pairFee": "7148530579825",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -488,7 +488,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1571107222",
         "fdvPairScaled1e18": "1571107222000000000",
         "quoteInput": "1000000000000000",
@@ -498,7 +498,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -516,9 +516,9 @@
       "pairSymbol": "ETH",
       "pairDecimals": 18,
       "complete": false,
-      "sold": "184598069045125170520693998",
+      "sold": "184676600785641010908066680",
       "targetPairUnits": "4000000000000000000",
-      "pairPrincipal": "279038114938582031",
+      "pairPrincipal": "279181679295017674",
       "createdAt": "1795497425",
       "currentRateBps": "100",
       "pricing": {
@@ -527,17 +527,17 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
-        "pricePairPerTokenScaled1e18": "1829065847",
-        "fdvPairScaled1e18": "1829065847000000000",
+        "readAtBlock": "158270451",
+        "pricePairPerTokenScaled1e18": "1829391479",
+        "fdvPairScaled1e18": "1829391479000000000",
         "quoteInput": "1000000000000000",
-        "grossTokensOut": "541314032580752856474367",
-        "netTokensOut": "541314032580752856474367",
+        "grossTokensOut": "541217678625549255389649",
+        "netTokensOut": "541217678625549255389649",
         "pairCost": "990099009900990",
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -566,7 +566,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1765233442",
         "fdvPairScaled1e18": "1765233442000000000",
         "quoteInput": "1000000000000000",
@@ -576,7 +576,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -605,7 +605,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1664083088",
         "fdvPairScaled1e18": "1664083088000000000",
         "quoteInput": "1000000000000000",
@@ -615,7 +615,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -644,7 +644,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1944450777",
         "fdvPairScaled1e18": "1944450777000000000",
         "quoteInput": "1000000000000000",
@@ -654,7 +654,7 @@
         "pairFee": "13417521704814",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -683,7 +683,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1613643122",
         "fdvPairScaled1e18": "1613643122000000000",
         "quoteInput": "1000000000000000",
@@ -693,7 +693,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -711,9 +711,9 @@
       "pairSymbol": "ETH",
       "pairDecimals": 18,
       "complete": false,
-      "sold": "176118234203453993999298224",
+      "sold": "176206563171820890862379119",
       "targetPairUnits": "4000000000000000000",
-      "pairPrincipal": "263685054861934486",
+      "pairPrincipal": "263843470703518644",
       "createdAt": "1795498864",
       "currentRateBps": "100",
       "pricing": {
@@ -722,17 +722,17 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
-        "pricePairPerTokenScaled1e18": "1794409409",
-        "fdvPairScaled1e18": "1794409409000000000",
+        "readAtBlock": "158270451",
+        "pricePairPerTokenScaled1e18": "1794765309",
+        "fdvPairScaled1e18": "1794765309000000000",
         "quoteInput": "1000000000000000",
-        "grossTokensOut": "551768734841206005418732",
-        "netTokensOut": "551768734841206005418732",
+        "grossTokensOut": "551659319903202987126882",
+        "netTokensOut": "551659319903202987126882",
         "pairCost": "990099009900990",
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -761,7 +761,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1728811359",
         "fdvPairScaled1e18": "1728811359000000000",
         "quoteInput": "1000000000000000",
@@ -771,7 +771,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -800,7 +800,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1671668789",
         "fdvPairScaled1e18": "1671668789000000000",
         "quoteInput": "1000000000000000",
@@ -810,7 +810,7 @@
         "pairFee": "1996007984031",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -839,7 +839,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1825125328",
         "fdvPairScaled1e18": "1825125328000000000",
         "quoteInput": "1000000000000000",
@@ -849,7 +849,7 @@
         "pairFee": "7148530579825",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -878,7 +878,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1755593601",
         "fdvPairScaled1e18": "1755593601000000000",
         "quoteInput": "1000000000000000",
@@ -888,7 +888,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -917,7 +917,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1587884046",
         "fdvPairScaled1e18": "1587884046000000000",
         "quoteInput": "1000000000000000",
@@ -927,7 +927,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -956,7 +956,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1831000789",
         "fdvPairScaled1e18": "1831000789000000000",
         "quoteInput": "1000000000000000",
@@ -966,7 +966,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -995,7 +995,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1584624219",
         "fdvPairScaled1e18": "1584624219000000000",
         "quoteInput": "1000000000000000",
@@ -1005,7 +1005,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1034,7 +1034,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1775294330",
         "fdvPairScaled1e18": "1775294330000000000",
         "quoteInput": "1000000000000000",
@@ -1044,7 +1044,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1073,7 +1073,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1703541230",
         "fdvPairScaled1e18": "1703541230000000000",
         "quoteInput": "1000000000000000",
@@ -1083,7 +1083,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1112,7 +1112,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1761317118",
         "fdvPairScaled1e18": "1761317118000000000",
         "quoteInput": "1000000000000000",
@@ -1122,7 +1122,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1151,7 +1151,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1696647526",
         "fdvPairScaled1e18": "1696647526000000000",
         "quoteInput": "1000000000000000",
@@ -1161,7 +1161,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1190,7 +1190,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1810522977",
         "fdvPairScaled1e18": "1810522977000000000",
         "quoteInput": "1000000000000000",
@@ -1200,7 +1200,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1229,7 +1229,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1742176620",
         "fdvPairScaled1e18": "1742176620000000000",
         "quoteInput": "1000000000000000",
@@ -1239,7 +1239,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1268,7 +1268,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1841206300",
         "fdvPairScaled1e18": "1841206300000000000",
         "quoteInput": "1000000000000000",
@@ -1278,7 +1278,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1307,7 +1307,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1969140029",
         "fdvPairScaled1e18": "1969140029000000000",
         "quoteInput": "1000000000000000",
@@ -1317,7 +1317,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1346,7 +1346,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1695041436",
         "fdvPairScaled1e18": "1695041436000000000",
         "quoteInput": "1000000000000000",
@@ -1356,7 +1356,7 @@
         "pairFee": "1996007984031",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1385,7 +1385,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1636421394",
         "fdvPairScaled1e18": "1636421394000000000",
         "quoteInput": "1000000000000000",
@@ -1395,7 +1395,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1413,9 +1413,9 @@
       "pairSymbol": "ETH",
       "pairDecimals": 18,
       "complete": false,
-      "sold": "174553401469682790739176584",
+      "sold": "174671953014364568731897611",
       "targetPairUnits": "4000000000000000000",
-      "pairPrincipal": "260883766339752639",
+      "pairPrincipal": "261095647527871450",
       "createdAt": "1795503083",
       "currentRateBps": "100",
       "pricing": {
@@ -1424,17 +1424,17 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
-        "pricePairPerTokenScaled1e18": "1788121823",
-        "fdvPairScaled1e18": "1788121823000000000",
+        "readAtBlock": "158270451",
+        "pricePairPerTokenScaled1e18": "1788597012",
+        "fdvPairScaled1e18": "1788597012000000000",
         "quoteInput": "1000000000000000",
-        "grossTokensOut": "553708923405257277982533",
-        "netTokensOut": "553708923405257277982533",
+        "grossTokensOut": "553561815805419800599471",
+        "netTokensOut": "553561815805419800599471",
         "pairCost": "990099009900990",
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1463,7 +1463,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1263215266",
         "fdvPairScaled1e18": "1263215266000000000",
         "quoteInput": "1000000000000000",
@@ -1473,7 +1473,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1502,7 +1502,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1263588539",
         "fdvPairScaled1e18": "1263588539000000000",
         "quoteInput": "1000000000000000",
@@ -1512,7 +1512,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1541,7 +1541,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1279127964",
         "fdvPairScaled1e18": "1279127964000000000",
         "quoteInput": "1000000000000000",
@@ -1551,7 +1551,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     },
     {
       "chainId": 46630,
@@ -1580,7 +1580,7 @@
         "pairCurrency": "0x0000000000000000000000000000000000000000",
         "pairSymbol": "ETH",
         "pairDecimals": 18,
-        "readAtBlock": "158086490",
+        "readAtBlock": "158270451",
         "pricePairPerTokenScaled1e18": "1288911895",
         "fdvPairScaled1e18": "1288911895000000000",
         "quoteInput": "1000000000000000",
@@ -1590,7 +1590,7 @@
         "pairFee": "9900990099009",
         "refund": "0"
       },
-      "stateReadAtBlock": "158086490"
+      "stateReadAtBlock": "158270451"
     }
   ],
   "warning": "Read-only discovery snapshot. Prices and FDV are denominated in each launch's pair currency; FDV uses total supply and is not circulating market cap. Curve quotes and V4 spot state are block snapshots, not settlement observations. No USD conversion or settlement result is inferred. Not settlement authority."
